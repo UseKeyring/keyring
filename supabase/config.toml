@@ -1,0 +1,7 @@
+project_id = "deqzyuxlaiqfwrtlbwph"
+
+# Polar signs its own webhooks (verified in code) and sends no Supabase
+# JWT, so verification must stay OFF here or every delivery 401s.
+# polar-checkout / polar-portal keep the default (verify user JWT).
+[functions.polar-webhook]
+verify_jwt = false
