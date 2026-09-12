@@ -734,7 +734,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.api_grant_role(_hash text, _role text, _subject text)
+CREATE OR REPLACE FUNCTION public.api_grant_role(_hash text, _role text, _subject text, _display_name text DEFAULT NULL)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
@@ -750,7 +750,7 @@ BEGIN
   SELECT id INTO _rid FROM public.roles
   WHERE slug = _role AND scope = 'customer' AND organization_id = _org;
   IF _rid IS NULL THEN RAISE EXCEPTION 'unknown_role:%', _role; END IF;
-  SELECT public.ensure_subject(_org, _subject) INTO _sid;
+  SELECT public.ensure_subject(_org, _subject, _display_name) INTO _sid;
   INSERT INTO public.grants (organization_id, role_id, subject_id)
   VALUES (_org, _rid, _sid)
   ON CONFLICT (role_id, subject_id) DO NOTHING;

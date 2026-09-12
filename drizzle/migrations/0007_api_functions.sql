@@ -50,7 +50,7 @@ $$;
 -- Grant a customer role (auto-provisions the subject, idempotent).
 -- Returns true when a new grant was created, false when it already existed,
 -- NULL on bad key. Raises unknown_role:<slug> for unknown customer roles.
-CREATE OR REPLACE FUNCTION public.api_grant_role(_hash text, _role text, _subject text)
+CREATE OR REPLACE FUNCTION public.api_grant_role(_hash text, _role text, _subject text, _display_name text DEFAULT NULL)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _id uuid;
@@ -62,7 +62,7 @@ BEGIN
   IF _id IS NULL THEN RETURN NULL; END IF;
   SELECT id INTO _rid FROM public.roles WHERE slug = _role AND scope = 'customer';
   IF _rid IS NULL THEN RAISE EXCEPTION 'unknown_role:%', _role; END IF;
-  SELECT public.ensure_subject(_subject) INTO _sid;
+  SELECT public.ensure_subject(_subject, _display_name) INTO _sid;
   INSERT INTO public.grants (role_id, subject_id)
   VALUES (_rid, _sid)
   ON CONFLICT (role_id, subject_id) DO NOTHING;
