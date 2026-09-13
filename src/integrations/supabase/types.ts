@@ -397,14 +397,14 @@ export type Database = {
           display_name?: string | null
           external_id: string
           id?: string
-          organization_id?: string | null
+          organization_id: string
         }
         Update: {
           created_at?: string
           display_name?: string | null
           external_id?: string
           id?: string
-          organization_id?: string | null
+          organization_id?: string
         }
         Relationships: []
       }
@@ -419,14 +419,14 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          organization_id?: string | null
+          organization_id: string
           role_id: string
           subject_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          organization_id?: string | null
+          organization_id?: string
           role_id?: string
           subject_id?: string
         }
@@ -586,6 +586,50 @@ export type Database = {
         }
         Relationships: []
       }
+      backups: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          organization_id: string
+          size_bytes: number | null
+          status: string
+          storage_path: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          organization_id: string
+          size_bytes?: number | null
+          status?: string
+          storage_path: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          organization_id?: string
+          size_bytes?: number | null
+          status?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backups_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -609,10 +653,14 @@ export type Database = {
         Returns: boolean
       }
       is_org_member: { Args: { _user_id: string }; Returns: boolean }
+      is_org_manager: {
+        Args: { _user_id: string; _org_id: string }
+        Returns: boolean
+      }
       my_organization_id: { Args: Record<string, never>; Returns: string }
       api_whoami: { Args: { _hash: string }; Returns: Json }
       api_check: { Args: { _hash: string; _subject: string; _perm: string }; Returns: boolean }
-      api_grant_role: { Args: { _hash: string; _role: string; _subject: string }; Returns: boolean }
+      api_grant_role: { Args: { _hash: string; _role: string; _subject: string; _display_name?: string | null }; Returns: boolean }
       api_revoke_grant: { Args: { _hash: string; _role: string; _subject: string }; Returns: boolean }
       api_list_roles: { Args: { _hash: string }; Returns: Json }
       api_list_permissions: { Args: { _hash: string }; Returns: Json }
@@ -626,6 +674,26 @@ export type Database = {
       remove_member: {
         Args: { _profile_id: string; _organization_id: string }
         Returns: null
+      }
+      create_backup: {
+        Args: { _organization_id: string; _user_id?: string | null }
+        Returns: string
+      }
+      complete_backup: {
+        Args: { _backup_id: string; _size_bytes?: number | null; _storage_path?: string | null }
+        Returns: null
+      }
+      fail_backup: {
+        Args: { _backup_id: string; _error_message?: string | null }
+        Returns: null
+      }
+      cleanup_old_backups: {
+        Args: { _organization_id: string }
+        Returns: null
+      }
+      get_organization_backup_data: {
+        Args: { _organization_id: string }
+        Returns: Json
       }
     }
     Enums: {
