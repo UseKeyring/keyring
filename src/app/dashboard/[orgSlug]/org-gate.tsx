@@ -31,7 +31,7 @@ export function OrgGate({ orgSlug, children }: { orgSlug: string; children: Reac
   const membership =
     (workspaces.data ?? []).find((w) => w.organizations?.slug === orgSlug) ?? null;
   const ready =
-    !loading && !!user && profile.isFetched && !workspaces.isLoading;
+    !loading && !!user && profile.isFetched && profile.data !== undefined && !workspaces.isLoading;
   const settled = ready && !!membership && membership.organization_id === orgId && !switching;
 
   useEffect(() => {

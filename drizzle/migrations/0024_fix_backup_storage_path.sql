@@ -109,8 +109,9 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.complete_backup(uuid, bigint, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.complete_backup(uuid, bigint, text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.complete_backup(uuid, bigint) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.complete_backup(uuid, bigint) TO service_role;
+-- NOTE: the old (uuid, bigint) overload is re-added by 0025 as a wrapper.
+-- Do NOT grant on it here: it does not exist yet at this point, and the
+-- GRANT would abort this script before the statements below it run.
 
 -- 3. One-off repair for rows created while DB and edge disagreed.
 --    Run the SELECT first to inspect, then the UPDATE for the known-good file.

@@ -36,7 +36,6 @@ import {
 import { SolarIcon } from "@/components/ui/solar-icon";
 import { Spotlight, SpotlightButton } from "./spotlight";
 import {
-  ConsoleMark,
   ConsoleNavLink,
   ConsoleUserRow,
   ConsoleWordmark as Wordmark,
@@ -181,21 +180,19 @@ function ConsoleSidebar() {
 
   return (
     <Sidebar variant="inset" collapsible="icon">
-      <SidebarHeader className="flex flex-row items-center justify-between md:pt-3.5">
-        <ConsoleMark />
-        <div className="flex flex-row items-center gap-1">
+      <SidebarHeader className="flex flex-row items-center justify-between gap-2 md:pt-3.5 group-data-[collapsible=icon]:justify-center">
+        <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+          <WorkspaceSwitcher />
+        </div>
+        <div className="flex shrink-0 flex-row items-center gap-1 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:justify-center">
           <SidebarTrigger />
-          <SpotlightButton />
+          <div className="group-data-[collapsible=icon]:hidden">
+            <SpotlightButton />
+          </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent className="gap-4 px-0 py-2">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <WorkspaceSwitcher />
-          </SidebarGroupContent>
-        </SidebarGroup>
-
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>

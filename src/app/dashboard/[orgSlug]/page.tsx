@@ -11,11 +11,13 @@ import {
   useSubjects,
 } from "@/hooks/useRbac";
 import { useMyOrganization } from "@/hooks/useOrganization";
+import { useApiKeys } from "./settings/api-keys";
 import { useDashboardBase } from "../dashboard-chrome";
 import { PanelSkeleton, StatCardsSkeleton } from "@/components/ui/skeletons";
 import {
   OverviewHeader,
   OverviewMatrix,
+  OverviewSetupSteps,
   OverviewStats,
   type OverviewStat,
 } from "../console-ui";
@@ -26,6 +28,7 @@ export default function OverviewPage() {
   const rolePerms = useRolePermissions();
   const grants = useGrants();
   const subjects = useSubjects();
+  const apiKeys = useApiKeys();
   const { org } = useMyOrganization();
   const { can, loading: accessLoading } = useMyAccess();
   const base = useDashboardBase();
@@ -46,6 +49,22 @@ export default function OverviewPage() {
   return (
     <div className="space-y-6">
       <OverviewHeader orgName={org.data?.name ?? null} />
+
+      {!loading && (
+        <OverviewSetupSteps
+          base={base}
+          permsCount={customerPerms.length}
+          rolesCount={customerRoles.length}
+          usersCount={subjects.data?.length ?? 0}
+          keysCount={apiKeys.data?.length ?? 0}
+          orgName={org.data?.name ?? ""}
+          orgSlug={org.data?.slug ?? ""}
+          existingRoles={customerRoles.map((r) => r.slug)}
+          existingActions={customerPerms.map((p) => p.slug)}
+          subjectCount={subjects.data?.length ?? 0}
+          grantCount={grants.data?.length ?? 0}
+        />
+      )}
 
       {loading ? (
         <StatCardsSkeleton />

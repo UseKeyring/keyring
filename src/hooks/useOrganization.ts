@@ -30,6 +30,7 @@ export function useMyProfile() {
   return useQuery({
     queryKey: ["profile", user?.id],
     enabled: !!user,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("profiles")
@@ -55,6 +56,7 @@ export function useMyOrganization() {
   const org = useQuery({
     queryKey: ["organization", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<Organization> => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("organizations")
@@ -72,6 +74,7 @@ export function useOrganizationMembers(orgId: string | null) {
   return useQuery({
     queryKey: ["organization-members", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("profiles")
@@ -114,6 +117,7 @@ export function useMyJoinRequest() {
   return useQuery({
     queryKey: ["my_join_request", user?.id],
     enabled: !!user,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("organization_join_requests")
@@ -135,6 +139,7 @@ export function usePendingJoinRequests(orgId: string | null) {
   return useQuery({
     queryKey: ["join_requests", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("organization_join_requests")
@@ -160,6 +165,7 @@ export function useMyWorkspaces() {
   return useQuery({
     queryKey: ["my_workspaces", user?.id],
     enabled: !!user,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("organization_members")

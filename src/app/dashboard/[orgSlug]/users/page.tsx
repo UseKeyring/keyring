@@ -45,7 +45,7 @@ export default function UsersPage() {
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!externalId.trim()) return;
+    if (!externalId.trim() || !orgId) return;
     setSaving(true);
     const { error } = await getSupabaseBrowserClient().from("subjects").insert({
       external_id: externalId.trim(),
@@ -78,9 +78,10 @@ export default function UsersPage() {
   const toggle = async (subject: Subject, roleId: string, on: boolean, roleSlug: string) => {
     const supabase = getSupabaseBrowserClient();
     if (on) {
+      if (!orgId) return;
       const { error } = await supabase
         .from("grants")
-        .insert({ subject_id: subject.id, role_id: roleId });
+        .insert({ subject_id: subject.id, role_id: roleId, organization_id: orgId });
       if (error) {
         toast.error(error.message);
         return;

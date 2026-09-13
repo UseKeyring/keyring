@@ -54,6 +54,7 @@ export function useRoles() {
   return useQuery({
     queryKey: ["roles", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<Role[]> => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("roles")
@@ -70,6 +71,7 @@ export function usePermissions() {
   return useQuery({
     queryKey: ["permissions", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<Permission[]> => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("permissions")
@@ -86,6 +88,7 @@ export function useRolePermissions() {
   return useQuery({
     queryKey: ["role_permissions", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<RolePermission[]> => {
       const { data, error } = await getSupabaseBrowserClient().from("role_permissions").select("*");
       if (error) throw error;
@@ -99,6 +102,7 @@ export function useGrants() {
   return useQuery({
     queryKey: ["grants", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<Grant[]> => {
       const { data, error } = await getSupabaseBrowserClient().from("grants").select("*");
       if (error) throw error;
@@ -112,6 +116,7 @@ export function useMemberRoles() {
   return useQuery({
     queryKey: ["member_roles", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<MemberRole[]> => {
       const { data, error } = await getSupabaseBrowserClient().from("member_roles").select("*");
       if (error) throw error;
@@ -129,6 +134,7 @@ export function useSubjects() {
   return useQuery({
     queryKey: ["subjects", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<Subject[]> => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("subjects")
@@ -145,6 +151,7 @@ export function useProfiles() {
   return useQuery({
     queryKey: ["profiles", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<Profile[]> => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("profiles")
@@ -161,6 +168,7 @@ export function useAuditLog() {
   return useQuery({
     queryKey: ["audit_log", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("audit_log")
@@ -224,6 +232,7 @@ export function useMyAccess() {
     // until the target workspace is known or the RPC can run against the
     // previous workspace and get cached under the new key.
     enabled: !!user && !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<string[]> => {
       const { data, error } = await getSupabaseBrowserClient().rpc("my_console_permissions");
       if (error) throw error;

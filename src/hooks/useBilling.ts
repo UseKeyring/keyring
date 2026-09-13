@@ -42,6 +42,7 @@ export function useMySubscription() {
   return useQuery({
     queryKey: ["my_subscription", user?.id],
     enabled: !!user,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("user_subscriptions")

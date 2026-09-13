@@ -23,11 +23,12 @@ type ApiKeyRow = {
   last_used_at: string | null;
 };
 
-function useApiKeys() {
+export function useApiKeys() {
   const { orgId } = useMyOrganization();
   return useQuery({
     queryKey: ["api_keys", orgId],
     enabled: !!orgId,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<ApiKeyRow[]> => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("api_keys")

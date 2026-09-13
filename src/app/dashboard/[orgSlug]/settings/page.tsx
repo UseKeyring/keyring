@@ -9,7 +9,6 @@ import { logAction, useMyAccess } from "@/hooks/useRbac";
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client";
 import {
   slugify,
-  useMyJoinRequest,
   useMyOrganization,
   useOrganizationMutations,
 } from "@/hooks/useOrganization";
@@ -32,118 +31,10 @@ import {
   type OrgDraft,
 } from "./org-fields";
 import { ApiKeysSection } from "./api-keys";
+import { BackupsSection } from "./backups";
 import { SettingsSkeleton } from "@/components/ui/skeletons";
 
-function CreateOrganization() {
-  const { createOrganization } = useOrganizationMutations();
-  const [draft, setDraft] = useState<OrgDraft>(EMPTY_DRAFT);
-  const [saving, setSaving] = useState(false);
-  const router = useRouter();
-  const patch = (p: Partial<OrgDraft>) => setDraft((d) => ({ ...d, ...p }));
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!draft.name.trim() || !draft.slug.trim()) {
-      toast.error("Name and slug are required");
-      return;
-    }
-    setSaving(true);
-    try {
-      const org = await createOrganization({
-        name: draft.name,
-        slug: slugify(draft.slug),
-        avatar_url: draft.avatarUrl || null,
-        website: draft.website || null,
-        support_email: draft.supportEmail || null,
-      });
-      toast.success("Organization created");
-      router.push(`/dashboard/${org.slug}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not create organization");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <>
-      <form onSubmit={submit} id="create-organization-form">
-        <OrgSettingsFields draft={draft} setDraft={patch} />
-      </form>
-      <div className="flex flex-row items-center gap-2">
-        <Button type="submit" form="create-organization-form" disabled={saving}>
-          {saving ? "Creating…" : "Create organization"}
-        </Button>
-      </div>
-    </>
-  );
-}
-
-function JoinOrganization() {
-  const { requestJoinOrganization, withdrawJoinRequest } = useOrganizationMutations();
-  const pending = useMyJoinRequest();
-  const [slug, setSlug] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!slug.trim()) return;
-    setSaving(true);
-    try {
-      await requestJoinOrganization(slug);
-      setSlug("");
-      toast.success("Request sent — a workspace manager must approve it");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not request to join");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const withdraw = async () => {
-    if (!pending.data) return;
-    setSaving(true);
-    try {
-      await withdrawJoinRequest(pending.data.id);
-      toast.success("Request withdrawn");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not withdraw request");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <SettingsGroup>
-      {pending.data && (
-        <SettingsGroupItem
-          title={`Request to join “${pending.data.organizations?.name ?? pending.data.organization_id}” pending`}
-          description="A workspace manager must approve your request before you can join."
-        >
-          <Button type="button" variant="ghost" size="sm" onClick={() => void withdraw()} disabled={saving}>
-            {saving ? "Withdrawing…" : "Withdraw request"}
-          </Button>
-        </SettingsGroupItem>
-      )}
-      <SettingsGroupItem
-        title="Request to join with a slug"
-        description="Ask your workspace admin for the organization slug. A manager must approve your request."
-      >
-        <form onSubmit={submit} className="flex gap-2">
-          <Input
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="acme"
-            className="max-w-xs"
-          />
-          <Button type="submit" disabled={saving}>
-            {saving ? "Requesting…" : "Request to join"}
-          </Button>
-        </form>
-      </SettingsGroupItem>
-    </SettingsGroup>
-  );
-}
 
 function EditOrganization() {
   const { org } = useMyOrganization();
@@ -351,31 +242,14 @@ export default function SettingsPage() {
         <>
           <SettingsSkeleton />
           <SettingsSkeleton />
+          <SettingsSkeleton />
         </>
       ) : org.data ? (
         <>
           <EditOrganization key={org.data.id} />
           <ApiKeysSection />
+          <BackupsSection />
           <DangerZone />
-          <div className="space-y-6">
-            <div>
-              <h2 className="type-body-lg font-medium text-ink">New workspace</h2>
-              <p className="type-body-sm mt-1 text-ink-muted">
-                Create another workspace. Requires an active Pro or Enterprise
-                subscription.
-              </p>
-            </div>
-            <CreateOrganization key={`new-${org.data.id}`} />
-          </div>
-          <div className="space-y-6">
-            <div>
-              <h2 className="type-body-lg font-medium text-ink">Join a workspace</h2>
-              <p className="type-body-sm mt-1 text-ink-muted">
-                Already know another workspace? Request to join it.
-              </p>
-            </div>
-            <JoinOrganization />
-          </div>
         </>
       ) : null}
     </div>

@@ -65,76 +65,80 @@ export function AuthForm() {
   };
 
   return (
-    <div className="mx-auto max-w-[480px] px-8 pt-12 pb-24">
-      <div className="type-eyebrow text-ink-muted">{mode === "signin" ? "Sign in" : "Sign up"}</div>
-      <h1 className="type-h2 mt-2 text-ink-navy" style={{ fontSize: "48px", lineHeight: "60px" }}>
-        {mode === "signin" ? "Sign in" : "Create your workspace"}
-      </h1>
-      <p className="type-body mt-3 text-ink-muted">
-        {mode === "signin"
-          ? "Access your roles and grants console."
-          : "Create your workspace organization after signing up."}
-      </p>
-
-      <div className="mt-8 border border-hairline bg-canvas p-8">
-        <form onSubmit={submit} className="space-y-4">
-          {mode === "signup" && (
-            <div className="space-y-2">
-              <Label>Full name</Label>
-              <Input
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ada Lovelace"
-              />
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Password</Label>
-            <Input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
-          </Button>
-        </form>
-
-        <div className="type-mono my-5 flex items-center gap-3 text-ink-muted">
-          <span className="h-px flex-1 bg-hairline" />
-          or
-          <span className="h-px flex-1 bg-hairline" />
+    <div className="flex h-screen w-full items-center justify-center">
+      <div className="w-full max-w-md rounded-3xl bg-pillar p-12">
+        <div className="mb-8">
+          <div className="mb-4 type-eyebrow text-ink-muted">{mode === "signin" ? "Sign in" : "Sign up"}</div>
+          <h2 className="type-display-md text-ink-navy">
+            {mode === "signin" ? "Welcome to Keyring" : "Create your workspace"}
+          </h2>
+          <span className="mt-2 block type-body text-ink-muted">
+            {mode === "signin"
+              ? "Access your roles and grants console."
+              : "Create your workspace organization after signing up."}
+          </span>
         </div>
 
-        <Button variant="secondary" className="w-full" onClick={github}>
-          Continue with GitHub
-        </Button>
-      </div>
+        <div className="flex flex-col gap-4">
+          <Button variant="secondary" className="w-full" onClick={github} disabled={busy}>
+            Continue with GitHub
+          </Button>
 
-      <p className="type-mono mt-6 text-ink-muted">
-        {mode === "signin" ? "No account yet?" : "Already have an account?"}{" "}
-            <button
-              type="button"
-              className="text-blue-600 dark:text-blue-400"
-          onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-        >
-          {mode === "signin" ? "Create one" : "Sign in"}
-        </button>
-      </p>
+          <div className="flex w-full flex-row items-center gap-6">
+            <div className="grow border-t border-hairline" />
+            <div className="type-body-sm text-ink-muted">or</div>
+            <div className="grow border-t border-hairline" />
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label>Full name</Label>
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Ada Lovelace"
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Password</Label>
+              <Input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={busy}>
+              {busy ? "Working…" : mode === "signin" ? "Sign in with email" : "Sign up with email"}
+            </Button>
+          </form>
+        </div>
+
+        <p className="mt-6 type-body-sm text-ink-muted">
+          {mode === "signin" ? "No account yet?" : "Already have an account?"}{" "}
+          <button
+            type="button"
+            className="text-link"
+            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+          >
+            {mode === "signin" ? "Create one" : "Sign in"}
+          </button>
+        </p>
+      </div>
     </div>
   );
 }
