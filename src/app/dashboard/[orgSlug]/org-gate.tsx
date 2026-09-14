@@ -10,6 +10,7 @@ import {
   useMyWorkspaces,
   useOrganizationMutations,
 } from "@/hooks/useOrganization";
+import { WaitlistBlocked, useWaitlistApproved } from "@/components/waitlist-gate";
 
 /*
  * Workspace gate for /dashboard/[orgSlug]: resolves the slug to a workspace
@@ -27,6 +28,8 @@ export function OrgGate({ orgSlug, children }: { orgSlug: string; children: Reac
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const gate = useWaitlistApproved(user?.email);
+  const gated = gate.enabled && !!user && !gate.checking && !gate.approved;
 
   const membership =
     (workspaces.data ?? []).find((w) => w.organizations?.slug === orgSlug) ?? null;
@@ -53,6 +56,8 @@ export function OrgGate({ orgSlug, children }: { orgSlug: string; children: Reac
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, membership?.organization_id, orgId, attempt]);
+
+  if (gated) return <WaitlistBlocked email={user?.email} />;
 
   if (switchError && !settled) {
     return (

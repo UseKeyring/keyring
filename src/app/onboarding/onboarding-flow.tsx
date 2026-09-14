@@ -21,6 +21,7 @@ import { KeyringMark } from "@/components/ui/keyring-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { WaitlistBlocked, useWaitlistApproved } from "@/components/waitlist-gate";
 import {
   EMPTY_DRAFT,
   OrgSettingsFields,
@@ -59,6 +60,8 @@ export function OnboardingFlow() {
   const invalidateSubscription = useInvalidateSubscription();
   const subscribed = isSubscribed(subscription.data);
   const patch = (p: Partial<OrgDraft>) => setDraft((d) => ({ ...d, ...p }));
+  const gate = useWaitlistApproved(user?.email);
+  const gated = gate.enabled && !!user && !gate.checking && !gate.approved;
 
   useEffect(() => {
     if (!loading && !user) router.replace("/auth");
@@ -96,6 +99,8 @@ export function OnboardingFlow() {
       </div>
     );
   }
+
+  if (gated) return <WaitlistBlocked email={user?.email} />;
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();

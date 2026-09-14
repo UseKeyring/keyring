@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LandingCta } from "../landing-cta";
 import { SiteFooter } from "../site-footer";
 import { SiteNav } from "../site-nav";
 import { Button } from "@/components/ui/button";
 import { SolarIcon } from "@/components/ui/solar-icon";
+import { isWaitlistEnabled } from "@/lib/waitlist";
 
 export const metadata: Metadata = {
   title: "Keyring — Pricing",
@@ -100,9 +102,10 @@ const FAQS = [
 ];
 
 export default function PricingPage() {
+  const waitlist = isWaitlistEnabled();
   return (
     <main className="min-h-screen bg-canvas">
-      <SiteNav />
+      <SiteNav waitlist={waitlist} />
 
       <div className="px-5 md:px-12">
         <div className="mx-auto w-full max-w-[1920px]">
@@ -243,14 +246,22 @@ export default function PricingPage() {
             <h2 className="text-[clamp(2rem,4.5vw,3.25rem)] leading-[1.05] font-normal tracking-[-0.02em] text-balance text-ink">
               Still deciding?
               <br />
-              <span className="text-ink-muted">The free tier is fully usable.</span>
+              <span className="text-ink-muted">
+                {waitlist ? "Join the waitlist for early access." : "The free tier is fully usable."}
+              </span>
             </h2>
-            <LandingCta large />
+            {waitlist ? (
+              <Button asChild size="lg">
+                <Link href="/waitlist">Join the waitlist</Link>
+              </Button>
+            ) : (
+              <LandingCta large />
+            )}
           </section>
         </div>
       </div>
 
-      <SiteFooter />
+      <SiteFooter waitlist={waitlist} />
     </main>
   );
 }

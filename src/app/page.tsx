@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { LandingCta } from "./landing-cta";
 import { SiteFooter } from "./site-footer";
-import { SiteNav } from "./site-nav";
+import { SiteNav, SiteWordmark } from "./site-nav";
+import { Button } from "@/components/ui/button";
+import { isWaitlistEnabled } from "@/lib/waitlist";
 import {
   ConsoleMain,
   ConsoleNavLink,
@@ -37,6 +39,10 @@ export const metadata: Metadata = {
   description:
     "Define actions, compose them into roles, and grant them to your product's users.",
 };
+
+// Runtime toggle (WAITLIST) needs per-request rendering; NEXT_PUBLIC_WAITLIST
+// alone would work statically, but force-dynamic keeps both vars live.
+export const dynamic = "force-dynamic";
 
 const HERO_CARDS = [
   {
@@ -301,7 +307,71 @@ function Chapter({
   );
 }
 
+/* Anchor CTA used everywhere the normal auth CTA would sit while the
+   waitlist is on — goes to the signup page instead of opening the app. */
+function WaitlistCta({ large = false }: { large?: boolean }) {
+  return (
+    <Button asChild size={large ? "lg" : "default"}>
+      <a href="/waitlist">Join the waitlist</a>
+    </Button>
+  );
+}
+
 export default function LandingPage() {
+  // Private beta: the landing page is only the hero, with every CTA
+  // pointing at /waitlist. The app itself stays gated — only approved
+  // emails get past /auth and /dashboard.
+  const waitlist = isWaitlistEnabled();
+  if (waitlist) {
+    return (
+      <main className="min-h-screen bg-canvas">
+        <SiteNav waitlist />
+
+        <div className="px-5 md:px-12">
+          <div className="mx-auto w-full max-w-[1920px]">
+            <section className="flex flex-col gap-12 py-16 md:gap-16 md:py-24">
+              <div className="max-w-3xl">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-ink text-canvas">
+                    <KeyringMark className="h-3 w-3" />
+                  </span>
+                  <span className="type-mono text-ink-muted">
+                    Private beta — access-control infrastructure for your product
+                  </span>
+                </div>
+                <h1 className="mt-6 text-[clamp(2.75rem,6vw,4.5rem)] leading-[1.02] font-normal tracking-[-0.025em] text-balance text-ink-navy">
+                  Permissions that read
+                  <br />
+                  <span className="text-ink-muted">like sentences.</span>
+                </h1>
+              </div>
+              <div className="mt-5 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+                <p className="type-body max-w-xl text-ink-muted">
+                  Define actions, compose them into roles, and grant them to
+                  your product&apos;s users — then answer any access question
+                  in one call.
+                </p>
+                <div className="shrink-0">
+                  <WaitlistCta large />
+                </div>
+              </div>
+
+              <HeroVisual />
+            </section>
+          </div>
+        </div>
+
+        <div className="w-full border-t border-hairline">
+          <div className="mx-auto flex w-full max-w-[1920px] items-center justify-between px-5 py-8 md:px-12">
+            <SiteWordmark />
+            <p className="type-body-sm text-ink-muted">
+              &copy; Keyring {new Date().getFullYear()}
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
   return (
     <main className="min-h-screen bg-canvas">
       <SiteNav />

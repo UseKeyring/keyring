@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyOrganization, useMyWorkspaces } from "@/hooks/useOrganization";
 import { useMyProfile } from "@/hooks/useOrganization";
+import { WaitlistBlocked, useWaitlistApproved } from "@/components/waitlist-gate";
 
 /*
  * /dashboard resolves to the caller's workspace: active workspace first,
@@ -17,14 +18,18 @@ export default function DashboardRoot() {
   const { orgId } = useMyOrganization();
   const workspaces = useMyWorkspaces();
   const router = useRouter();
+  const gate = useWaitlistApproved(user?.email);
+  const gated = gate.enabled && !!user && !gate.checking && !gate.approved;
 
   useEffect(() => {
-    if (loading || !user || !profile.isFetched || workspaces.isLoading) return;
+    if (loading || !user || gated || !profile.isFetched || workspaces.isLoading) return;
     const mine = workspaces.data ?? [];
     const active = mine.find((w) => w.organization_id === orgId) ?? mine[0];
     const slug = active?.organizations?.slug;
     router.replace(slug ? `/dashboard/${slug}` : "/onboarding");
-  }, [loading, user, profile.isFetched, workspaces.isLoading, workspaces.data, orgId, router]);
+  }, [loading, user, gated, profile.isFetched, workspaces.isLoading, workspaces.data, orgId, router]);
+
+  if (gated) return <WaitlistBlocked email={user?.email} />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas">
