@@ -236,7 +236,7 @@ Pushing to `main` auto-deploys via Workers Builds (build `cd apps/web &&
 npx @opennextjs/cloudflare build`, deploy `cd apps/web &&
 npx @opennextjs/cloudflare deploy`). Manual deploy from a checkout:
 
-```sh
+```bash
 cd apps/web && bun run deploy
 ```
 
