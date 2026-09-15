@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/*
+ * Monorepo: shared components live in packages/ui, outside the app's
+ * working directory, so Tailwind's automatic content detection never sees
+ * them. Register this package explicitly or utilities used only here
+ * (md:block, w-(--sidebar-width), data-sidebar selectors, …) silently
+ * vanish from the built CSS — e.g. the dashboard sidebar stays hidden.
+ */
+@source "../**/*.{js,ts,jsx,tsx}";
+
 /* Class-based dark mode (next-themes) — same as Polar's own setup. */
 @custom-variant dark (&:where(.dark, .dark *));
 
