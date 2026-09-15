@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // Replaces eslint-config-next (next/core-web-vitals + next/typescript).
+  "plugins": ["import", "jsx-a11y", "nextjs", "react", "typescript"],
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "ignorePatterns": ["node_modules", ".next", "out", "next-env.d.ts", ".open-next", ".wrangler"],
+  "rules": {
+    // The onboarding hero is a static asset and the Next optimizer has no
+    // Workers runtime (see onboarding-flow.tsx) — allow plain <img> project-wide.
+    "nextjs/no-img-element": "off"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "all",
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    ".next",
+    "out",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    ".open-next",
+    ".wrangler",
+    "cloudflare-env.d.ts"
+  ]
+}

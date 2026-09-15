@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -157,13 +156,15 @@ export function OnboardingFlow() {
   return (
     <div className="flex min-h-screen">
       <div className="relative hidden w-[45%] shrink-0 lg:block">
-        <Image
+        {/* Plain <img>: the Next optimizer has no Workers runtime, and this
+            is a static asset — identical rendering via absolute fill. */}
+        <img
           src="/onboarding-0.png"
           alt=""
-          fill
-          priority
-          sizes="45vw"
-          className="object-cover"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/20 to-transparent" />
       </div>
@@ -171,10 +172,15 @@ export function OnboardingFlow() {
       <div className="flex flex-1 items-center justify-center px-8 py-16">
         <div className="flex w-full max-w-xl flex-col gap-8">
           <h1 className="type-display-md text-ink">
-            Welcome to <KeyringMark className="mx-1 inline-block h-[0.9em] w-[0.9em] align-[-0.1em]" /> Keyring
+            Welcome to{" "}
+            <KeyringMark className="mx-1 inline-block h-[0.9em] w-[0.9em] align-[-0.1em]" /> Keyring
           </h1>
 
-          <div role="radiogroup" aria-label="Setup mode" className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div
+            role="radiogroup"
+            aria-label="Setup mode"
+            className="grid grid-cols-1 gap-3 md:grid-cols-2"
+          >
             {MODES.map((opt) => {
               const selected = mode === opt.value;
               return (
@@ -194,7 +200,9 @@ export function OnboardingFlow() {
                     <span className="flex h-4 w-4 items-center justify-center rounded-full border border-blue-600">
                       {selected && <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />}
                     </span>
-                    <span className={selected ? "type-body-sm text-ink" : "type-body-sm text-ink-muted"}>
+                    <span
+                      className={selected ? "type-body-sm text-ink" : "type-body-sm text-ink-muted"}
+                    >
                       {opt.title}
                     </span>
                   </span>
@@ -211,12 +219,17 @@ export function OnboardingFlow() {
                   Request to join “{myRequest.data.organizations?.name ?? "workspace"}” pending
                 </div>
                 <p className="type-body-sm mt-1 text-ink-muted">
-                  A workspace manager must approve your request. You can create
-                  your own workspace meanwhile, or withdraw below.
+                  A workspace manager must approve your request. You can create your own workspace
+                  meanwhile, or withdraw below.
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button type="button" variant="ghost" disabled={saving} onClick={() => void withdraw()}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={saving}
+                  onClick={() => void withdraw()}
+                >
                   {saving ? "Withdrawing…" : "Withdraw request"}
                 </Button>
               </div>
@@ -244,14 +257,11 @@ export function OnboardingFlow() {
                     Creating a workspace requires Pro — $19 per project / month
                   </div>
                   <p className="type-body-sm mt-1 text-ink-muted">
-                    Self-hosting stays free forever. On this hosted console, an
-                    active Pro or Enterprise subscription unlocks workspace
-                    creation.
+                    Self-hosting stays free forever. On this hosted console, an active Pro or
+                    Enterprise subscription unlocks workspace creation.
                   </p>
                 </div>
-                {checkout.error && (
-                  <p className="type-body-sm text-red-500">{checkout.error}</p>
-                )}
+                {checkout.error && <p className="type-body-sm text-red-500">{checkout.error}</p>}
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     type="button"

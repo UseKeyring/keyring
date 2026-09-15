@@ -1,6 +1,0 @@
-node_modules
-dist
-.next
-out
-package-lock.json
-pnpm-lock.yaml
