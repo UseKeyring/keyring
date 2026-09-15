@@ -34,3 +34,9 @@ supabase/.temp/
 .vercel
 .env*
 !.env.example
+
+# Cloudflare (opennext build output, wrangler state, generated types, local preview vars)
+.open-next/
+.wrangler/
+cloudflare-env.d.ts
+.dev.vars

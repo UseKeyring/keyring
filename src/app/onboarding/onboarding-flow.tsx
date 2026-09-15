@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -157,13 +156,16 @@ export function OnboardingFlow() {
   return (
     <div className="flex min-h-screen">
       <div className="relative hidden w-[45%] shrink-0 lg:block">
-        <Image
+        {/* Plain <img>: the Next optimizer has no Workers runtime, and this
+            is a static asset — identical rendering via absolute fill. */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- intentional: Workers has no image optimizer */}
+        <img
           src="/onboarding-0.png"
           alt=""
-          fill
-          priority
-          sizes="45vw"
-          className="object-cover"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/20 to-transparent" />
       </div>
