@@ -7,8 +7,8 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  }
+    "binding": "ASSETS",
+  },
   // No `vars`: the app only needs NEXT_PUBLIC_* build-time vars (inlined by
   // `next build`). All secrets live in Supabase edge functions, not here.
 }
