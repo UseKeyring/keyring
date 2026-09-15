@@ -229,3 +229,18 @@ Schema lives in `drizzle/migrations/` (`0000_rbac_core.sql`, `0001_organizations
 Apply new migrations in the Supabase dashboard SQL editor — the app cannot
 migrate the hosted database itself. After applying, regenerate types if the
 schema changed (`src/integrations/supabase/types.ts` is checked in).
+
+## Deploy (Cloudflare Workers)
+
+Pushing to `main` auto-deploys via Workers Builds (build `cd apps/web &&
+npx @opennextjs/cloudflare build`, deploy `cd apps/web &&
+npx @opennextjs/cloudflare deploy`). Manual deploy from a checkout:
+
+```sh
+cd apps/web && bun run deploy
+```
+
+Build-time vars (`NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_WAITLIST`) are set in
+the Cloudflare dashboard; `SUBJECT_TOKEN_SECRET` lives as a Worker secret
+(`wrangler secret put SUBJECT_TOKEN_SECRET` from `apps/web`).
