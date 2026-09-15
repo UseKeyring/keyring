@@ -148,58 +148,80 @@ Notes:
 
 ## Management API (no dashboard required)
 
-Every console action is also a REST call for backends that manage access
-programmatically — grant roles, revoke them, change a user's access without
-touching the UI.
+Backends (and browsers, for checks) manage access programmatically — grant
+roles, revoke them, check permissions — without the dashboard.
 
 **Auth: issued API keys — no service_role key exists anywhere in this stack.**
-Create one in Settings → API keys (name it, copy it once — only the hash is
-stored). Pass it as `Authorization: Bearer <key>`. Revoking kills it instantly
-(`last_used_at` tells you if it's still in use). Server routes run over the
-publishable key; every operation validates the issued key inside a
-`SECURITY DEFINER` function (`0007_api_functions.sql`).
+Create keys in Settings → API keys (copy once — only the hash is stored).
 
-```sh
-# Grant a role (auto-provisions the subject; idempotent)
-curl -X POST "$KEYRING_URL/api/v1/grants" \
-  -H "Authorization: Bearer $KEYRING_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"role": "editor", "subject": "user_abc123"}'
-# → {"ok": true, "role": "editor", "subject": "user_abc123"}
+| Kind | Prefix | Use |
+|---|---|---|
+| **Secret** | `kr_sk_live_…` (legacy `kr_live_…`) | Server only — grant/revoke/list/check + mint subject tokens |
+| **Publishable** | `kr_pk_live_…` | Frontend — `GET /api/v1/check` only, with `X-Keyring-Subject-Token` |
 
-# Revoke it (idempotent)
-curl -X DELETE "$KEYRING_URL/api/v1/grants" \
-  -H "Authorization: Bearer $KEYRING_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"role": "editor", "subject": "user_abc123"}'
-# → {"ok": true, "revoked": true}
+Pass the key as `Authorization: Bearer <key>`. Revoking kills it instantly.
+Server routes run over the Supabase publishable key; every operation validates
+the issued key inside a `SECURITY DEFINER` function. Subject-token JWTs are
+signed with `SUBJECT_TOKEN_SECRET` on the Keyring app (see `.env.example`).
 
-# Read check (prefers RPC? use this when REST is handier)
-curl "$KEYRING_URL/api/v1/check?subject=user_abc123&permission=invoices.refund" \
-  -H "Authorization: Bearer $KEYRING_API_KEY"
-# → {"subject": "user_abc123", "permission": "invoices.refund", "allowed": true}
-
-# Discover slugs programmatically (customer plane only — console roles
-# and permissions never leak through these endpoints)
-curl "$KEYRING_URL/api/v1/roles" -H "Authorization: Bearer $KEYRING_API_KEY"
-curl "$KEYRING_URL/api/v1/permissions" -H "Authorization: Bearer $KEYRING_API_KEY"
-```
+### TypeScript SDK (`@keyring/sdk`)
 
 ```ts
-// Same thing from Node, e.g. inside your signup webhook:
-await fetch(`${process.env.KEYRING_URL}/api/v1/grants`, {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${process.env.KEYRING_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ role: "viewer", subject: newUser.id }),
+import { Keyring } from "@keyring/sdk";
+
+// Server
+const keyring = new Keyring({
+  apiKey: process.env.KEYRING_SECRET_KEY!,
+  baseUrl: process.env.KEYRING_URL!,
 });
+
+await keyring.grantRole({ role: "viewer", subject: newUser.id });
+const { allowed } = await keyring.check(newUser.id, "invoices.refund");
+
+// After your login, mint a token for the browser:
+const { token } = await keyring.createSubjectToken({ subject: newUser.id });
+
+// Browser (publishable key — UX checks only; enforce on the server too)
+const browser = new Keyring({
+  apiKey: process.env.NEXT_PUBLIC_KEYRING_PUBLISHABLE_KEY!,
+  baseUrl: process.env.NEXT_PUBLIC_KEYRING_URL!,
+  subjectToken: token,
+});
+await browser.check("invoices.refund");
 ```
 
-To **change a user's access**, grant the new role and revoke the old one —
-two calls, same audit trail as dashboard clicks (`grant.added` /
-`grant.removed` land in the activity log either way).
+Package lives at `packages/sdk`. See `packages/sdk/README.md`.
+
+### curl
+
+```sh
+# Grant a role (secret key; auto-provisions the subject; idempotent)
+curl -X POST "$KEYRING_URL/api/v1/grants" \
+  -H "Authorization: Bearer $KEYRING_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "editor", "subject": "user_abc123"}'
+
+# Mint a subject token for the browser (secret key)
+curl -X POST "$KEYRING_URL/api/v1/subject-tokens" \
+  -H "Authorization: Bearer $KEYRING_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"subject": "user_abc123", "ttl_seconds": 3600}'
+
+# Browser check (publishable key + subject token)
+curl "$KEYRING_URL/api/v1/check?permission=invoices.refund" \
+  -H "Authorization: Bearer $KEYRING_PUBLISHABLE_KEY" \
+  -H "X-Keyring-Subject-Token: $SUBJECT_TOKEN"
+
+# Server check (secret key + subject query)
+curl "$KEYRING_URL/api/v1/check?subject=user_abc123&permission=invoices.refund" \
+  -H "Authorization: Bearer $KEYRING_SECRET_KEY"
+
+curl "$KEYRING_URL/api/v1/roles" -H "Authorization: Bearer $KEYRING_SECRET_KEY"
+curl "$KEYRING_URL/api/v1/permissions" -H "Authorization: Bearer $KEYRING_SECRET_KEY"
+```
+
+To **change a user's access**, grant the new role and revoke the old one
+(or `keyring.replaceRole(...)`).
 
 ## Database
 

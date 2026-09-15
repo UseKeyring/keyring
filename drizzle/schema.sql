@@ -177,6 +177,8 @@ CREATE TABLE public.api_keys (
   name text NOT NULL,
   key_hash text NOT NULL UNIQUE,
   prefix text NOT NULL,
+  key_type text NOT NULL DEFAULT 'secret'
+    CHECK (key_type IN ('secret', 'publishable')),
   organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -769,6 +771,25 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.api_key_meta(_hash text)
+RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  _id uuid;
+  _row record;
+BEGIN
+  SELECT public._api_key_id(_hash) INTO _id;
+  IF _id IS NULL THEN RETURN NULL; END IF;
+  SELECT name, organization_id, key_type INTO _row
+  FROM public.api_keys WHERE id = _id;
+  RETURN json_build_object(
+    'name', _row.name,
+    'organization_id', _row.organization_id,
+    'key_type', _row.key_type
+  );
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.api_key_meta(text) TO anon, authenticated, service_role;
+
 CREATE OR REPLACE FUNCTION public.api_whoami(_hash text)
 RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -777,9 +798,13 @@ DECLARE
 BEGIN
   SELECT public._api_key_id(_hash) INTO _id;
   IF _id IS NULL THEN RETURN NULL; END IF;
-  SELECT name, organization_id INTO _row
+  SELECT name, organization_id, key_type INTO _row
   FROM public.api_keys WHERE id = _id;
-  RETURN json_build_object('name', _row.name, 'organization_id', _row.organization_id);
+  RETURN json_build_object(
+    'name', _row.name,
+    'organization_id', _row.organization_id,
+    'key_type', _row.key_type
+  );
 END;
 $$;
 
@@ -802,14 +827,15 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
   _org uuid;
+  _type text;
   _rid uuid;
   _sid uuid;
   _n int;
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
   IF _key IS NULL THEN RETURN NULL; END IF;
-  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
-  IF _org IS NULL THEN RETURN NULL; END IF;
+  SELECT organization_id, key_type INTO _org, _type FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL OR _type IS DISTINCT FROM 'secret' THEN RETURN NULL; END IF;
   SELECT id INTO _rid FROM public.roles
   WHERE slug = _role AND scope = 'customer' AND organization_id = _org;
   IF _rid IS NULL THEN RAISE EXCEPTION 'unknown_role:%', _role; END IF;
@@ -827,13 +853,14 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
   _org uuid;
+  _type text;
   _rid uuid;
   _sid uuid;
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
   IF _key IS NULL THEN RETURN NULL; END IF;
-  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
-  IF _org IS NULL THEN RETURN NULL; END IF;
+  SELECT organization_id, key_type INTO _org, _type FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL OR _type IS DISTINCT FROM 'secret' THEN RETURN NULL; END IF;
   SELECT id INTO _rid FROM public.roles
   WHERE slug = _role AND scope = 'customer' AND organization_id = _org;
   IF _rid IS NULL THEN RAISE EXCEPTION 'unknown_role:%', _role; END IF;
@@ -851,11 +878,12 @@ RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
   _org uuid;
+  _type text;
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
   IF _key IS NULL THEN RETURN NULL; END IF;
-  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
-  IF _org IS NULL THEN RETURN NULL; END IF;
+  SELECT organization_id, key_type INTO _org, _type FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL OR _type IS DISTINCT FROM 'secret' THEN RETURN NULL; END IF;
   RETURN COALESCE((
     SELECT json_agg(json_build_object('slug', slug, 'name', name, 'description', description, 'created_at', created_at) ORDER BY created_at)
     FROM public.roles WHERE scope = 'customer' AND organization_id = _org
@@ -868,11 +896,12 @@ RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
   _org uuid;
+  _type text;
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
   IF _key IS NULL THEN RETURN NULL; END IF;
-  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
-  IF _org IS NULL THEN RETURN NULL; END IF;
+  SELECT organization_id, key_type INTO _org, _type FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL OR _type IS DISTINCT FROM 'secret' THEN RETURN NULL; END IF;
   RETURN COALESCE((
     SELECT json_agg(json_build_object('slug', slug, 'name', name, 'description', description, 'category', category, 'created_at', created_at) ORDER BY category)
     FROM public.permissions WHERE scope = 'customer' AND organization_id = _org
@@ -1340,7 +1369,7 @@ WHERE pronamespace = 'public'::regnamespace
     'guard_profile_org_change', 'set_role_permission_org',
     'set_grant_org', 'fill_audit_org', 'grant_creator_membership',
     'handle_new_user', 'sync_subscription',
-    'has_active_subscription', '_api_key_id', 'api_whoami', 'api_check',
+    'has_active_subscription', '_api_key_id', 'api_key_meta', 'api_whoami', 'api_check',
     'api_grant_role', 'api_revoke_grant', 'api_list_roles', 'api_list_permissions')
 ORDER BY proname;
 ...[truncated 14068 chars]

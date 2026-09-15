@@ -1,0 +1,19 @@
+[install]
+linkWorkspacePackages = false
+minimumReleaseAgeExcludes = [
+  "turbo",
+  "@turbo/darwin-arm64",
+  "@turbo/darwin-x64",
+  "@turbo/linux-arm64",
+  "@turbo/linux-x64",
+  "next",
+  "@next/swc-darwin-arm64",
+  "@next/swc-darwin-x64",
+  "@next/swc-linux-x64-gnu",
+  "@next/swc-linux-arm64-gnu",
+  "sharp",
+  "react",
+  "react-dom",
+  "zod",
+  "@tanstack/react-query",
+]

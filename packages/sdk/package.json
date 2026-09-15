@@ -1,0 +1,33 @@
+{
+  "name": "@keyring/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript client for the Keyring Management API (server + browser)",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check-types": "tsc --noEmit --incremental --tsBuildInfoFile .cache/typecheck.tsbuildinfo",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@keyring/typescript-config": "workspace:*",
+    "typescript": "^5.8.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

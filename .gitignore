@@ -12,6 +12,11 @@ dist
 .output
 .next/
 out/
+.turbo/
+.cache/
+
+# bun
+bun.lockb
 
 # Supabase CLI local state (branches, temp storage, functions serve)
 supabase/.temp/
@@ -20,6 +25,9 @@ supabase/.temp/
 # Env
 *.local
 .env*.local
+
+# Session notes (local)
+session-*.md
 
 # Editor directories and files
 .vscode/*
