@@ -13,12 +13,14 @@ bun add @keyring/sdk
 
 | Kind | Prefix | Where | Can do |
 |---|---|---|---|
-| Secret | `kr_sk_live_…` (legacy `kr_live_…`) | Server env only | Check, grant/revoke, list roles/permissions, mint subject tokens |
-| Publishable | `kr_pk_live_…` | Frontend (`NEXT_PUBLIC_…`) | Check only, and only with a subject token |
+| Secret | `kr_sk_live_…` (legacy `kr_live_…`) | Server env only | Any selected Management API scopes |
+| Publishable | `kr_pk_live_…` | Frontend (`NEXT_PUBLIC_…`) | `check` only (with a subject token) |
 
-Create both in the Keyring console under **Settings → API keys**.
+Scopes are chosen when you create the key (Polar-style picker): `check`, `grants.write`, `roles.read`, `actions.read`, `subject_tokens.write`. Missing a scope → `403`.
 
-Browser checks are for **UX** (show/hide UI). Enforce access on your server with the secret key.
+Create keys in the Keyring console under **Settings → API keys**.
+
+Browser checks are for **UX** (show/hide UI). Enforce access on your server with a secret key that includes `check`.
 
 ## Server
 

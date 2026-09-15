@@ -1,18 +1,25 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  hasScope,
+  normalizeScopes,
+  type ApiKeyScope,
+} from "@/lib/api-key-scopes";
 import { hashApiKey, type ApiKeyKind } from "@/lib/api-keys";
 
 /*
  * Management API plumbing. There is deliberately NO service_role usage
  * anywhere in this stack: routes run over the publishable key and every
  * operation goes through a SECURITY DEFINER function that validates
- * the issued API key itself (bad/revoked key → NULL → 401 below).
+ * the issued API key itself (bad/revoked/expired key → NULL → 401 below).
  */
 
 export type ApiKeyMeta = {
   name: string;
   organization_id: string;
   key_type: ApiKeyKind;
+  scopes: ApiKeyScope[];
+  expires_at: string | null;
 };
 
 function buildPublicClient() {
@@ -58,6 +65,8 @@ export async function resolveApiKey(raw: string): Promise<ApiKeyMeta | null> {
     name?: unknown;
     organization_id?: unknown;
     key_type?: unknown;
+    scopes?: unknown;
+    expires_at?: unknown;
   };
   if (
     typeof row.name !== "string" ||
@@ -70,7 +79,17 @@ export async function resolveApiKey(raw: string): Promise<ApiKeyMeta | null> {
     name: row.name,
     organization_id: row.organization_id,
     key_type: row.key_type,
+    scopes: normalizeScopes(row.scopes),
+    expires_at: typeof row.expires_at === "string" ? row.expires_at : null,
   };
+}
+
+/** App-layer scope gate (SQL RPCs also enforce). Missing scope → 403. */
+export function requireScope(meta: ApiKeyMeta, scope: ApiKeyScope): Response | null {
+  if (!hasScope(meta.scopes, scope)) {
+    return forbidden(`API key missing scope: ${scope}`);
+  }
+  return null;
 }
 
 export function unauthorized() {

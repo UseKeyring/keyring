@@ -1,16 +1,16 @@
 import { hashApiKey } from "@/lib/api-keys";
 import {
   bearerHash,
-  forbidden,
   misconfigured,
   publicClient,
+  requireScope,
   resolveApiKey,
   unauthorized,
 } from "../auth";
 
 /*
  * GET /api/v1/roles — customer-plane roles only. The hidden console plane
- * never leaks through this API. Secret key only.
+ * never leaks through this API. Requires roles.read scope.
  */
 export async function GET(req: Request) {
   const raw = bearerHash(req);
@@ -20,9 +20,8 @@ export async function GET(req: Request) {
 
   const meta = await resolveApiKey(raw);
   if (!meta) return unauthorized();
-  if (meta.key_type !== "secret") {
-    return forbidden("Publishable keys cannot list roles");
-  }
+  const scopeErr = requireScope(meta, "roles.read");
+  if (scopeErr) return scopeErr;
 
   const { data, error } = await supabase.rpc("api_list_roles", {
     _hash: await hashApiKey(raw),

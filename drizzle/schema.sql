@@ -179,10 +179,13 @@ CREATE TABLE public.api_keys (
   prefix text NOT NULL,
   key_type text NOT NULL DEFAULT 'secret'
     CHECK (key_type IN ('secret', 'publishable')),
+  -- Built-in Management API scopes (check, grants.write, roles.read, …)
+  scopes text[] NOT NULL DEFAULT '{}',
   organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   last_used_at timestamptz,
+  expires_at timestamptz,
   revoked_at timestamptz
 );
 
@@ -765,10 +768,20 @@ DECLARE
 BEGIN
   UPDATE public.api_keys
   SET last_used_at = now()
-  WHERE key_hash = _hash AND revoked_at IS NULL
+  WHERE key_hash = _hash
+    AND revoked_at IS NULL
+    AND (expires_at IS NULL OR expires_at > now())
   RETURNING id INTO _id;
   RETURN _id;
 END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.api_key_has_scope(_id uuid, _scope text)
+RETURNS boolean LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.api_keys
+    WHERE id = _id AND _scope = ANY (scopes)
+  );
 $$;
 
 CREATE OR REPLACE FUNCTION public.api_key_meta(_hash text)
@@ -779,12 +792,14 @@ DECLARE
 BEGIN
   SELECT public._api_key_id(_hash) INTO _id;
   IF _id IS NULL THEN RETURN NULL; END IF;
-  SELECT name, organization_id, key_type INTO _row
+  SELECT name, organization_id, key_type, scopes, expires_at INTO _row
   FROM public.api_keys WHERE id = _id;
   RETURN json_build_object(
     'name', _row.name,
     'organization_id', _row.organization_id,
-    'key_type', _row.key_type
+    'key_type', _row.key_type,
+    'scopes', COALESCE(to_json(_row.scopes), '[]'::json),
+    'expires_at', _row.expires_at
   );
 END;
 $$;
@@ -798,12 +813,14 @@ DECLARE
 BEGIN
   SELECT public._api_key_id(_hash) INTO _id;
   IF _id IS NULL THEN RETURN NULL; END IF;
-  SELECT name, organization_id, key_type INTO _row
+  SELECT name, organization_id, key_type, scopes, expires_at INTO _row
   FROM public.api_keys WHERE id = _id;
   RETURN json_build_object(
     'name', _row.name,
     'organization_id', _row.organization_id,
-    'key_type', _row.key_type
+    'key_type', _row.key_type,
+    'scopes', COALESCE(to_json(_row.scopes), '[]'::json),
+    'expires_at', _row.expires_at
   );
 END;
 $$;
@@ -816,6 +833,7 @@ DECLARE
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
   IF _key IS NULL THEN RETURN NULL; END IF;
+  IF NOT public.api_key_has_scope(_key, 'check') THEN RETURN NULL; END IF;
   SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
   IF _org IS NULL THEN RETURN NULL; END IF;
   RETURN public.has_permission_for_external(_org, _subject, _perm);
@@ -827,15 +845,15 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
   _org uuid;
-  _type text;
   _rid uuid;
   _sid uuid;
   _n int;
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
   IF _key IS NULL THEN RETURN NULL; END IF;
-  SELECT organization_id, key_type INTO _org, _type FROM public.api_keys WHERE id = _key;
-  IF _org IS NULL OR _type IS DISTINCT FROM 'secret' THEN RETURN NULL; END IF;
+  IF NOT public.api_key_has_scope(_key, 'grants.write') THEN RETURN NULL; END IF;
+  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL THEN RETURN NULL; END IF;
   SELECT id INTO _rid FROM public.roles
   WHERE slug = _role AND scope = 'customer' AND organization_id = _org;
   IF _rid IS NULL THEN RAISE EXCEPTION 'unknown_role:%', _role; END IF;
@@ -853,14 +871,14 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
   _org uuid;
-  _type text;
   _rid uuid;
   _sid uuid;
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
   IF _key IS NULL THEN RETURN NULL; END IF;
-  SELECT organization_id, key_type INTO _org, _type FROM public.api_keys WHERE id = _key;
-  IF _org IS NULL OR _type IS DISTINCT FROM 'secret' THEN RETURN NULL; END IF;
+  IF NOT public.api_key_has_scope(_key, 'grants.write') THEN RETURN NULL; END IF;
+  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL THEN RETURN NULL; END IF;
   SELECT id INTO _rid FROM public.roles
   WHERE slug = _role AND scope = 'customer' AND organization_id = _org;
   IF _rid IS NULL THEN RAISE EXCEPTION 'unknown_role:%', _role; END IF;
@@ -878,12 +896,12 @@ RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
   _org uuid;
-  _type text;
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
   IF _key IS NULL THEN RETURN NULL; END IF;
-  SELECT organization_id, key_type INTO _org, _type FROM public.api_keys WHERE id = _key;
-  IF _org IS NULL OR _type IS DISTINCT FROM 'secret' THEN RETURN NULL; END IF;
+  IF NOT public.api_key_has_scope(_key, 'roles.read') THEN RETURN NULL; END IF;
+  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL THEN RETURN NULL; END IF;
   RETURN COALESCE((
     SELECT json_agg(json_build_object('slug', slug, 'name', name, 'description', description, 'created_at', created_at) ORDER BY created_at)
     FROM public.roles WHERE scope = 'customer' AND organization_id = _org
@@ -896,16 +914,51 @@ RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
   _org uuid;
-  _type text;
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
   IF _key IS NULL THEN RETURN NULL; END IF;
-  SELECT organization_id, key_type INTO _org, _type FROM public.api_keys WHERE id = _key;
-  IF _org IS NULL OR _type IS DISTINCT FROM 'secret' THEN RETURN NULL; END IF;
+  IF NOT public.api_key_has_scope(_key, 'actions.read') THEN RETURN NULL; END IF;
+  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL THEN RETURN NULL; END IF;
   RETURN COALESCE((
     SELECT json_agg(json_build_object('slug', slug, 'name', name, 'description', description, 'category', category, 'created_at', created_at) ORDER BY category)
     FROM public.permissions WHERE scope = 'customer' AND organization_id = _org
   ), '[]'::json);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.guard_api_key_scopes()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  _allowed text[] := ARRAY[
+    'check',
+    'grants.write',
+    'roles.read',
+    'actions.read',
+    'subject_tokens.write'
+  ];
+  _pub text[] := ARRAY['check'];
+  _s text;
+BEGIN
+  IF NEW.scopes IS NULL THEN
+    NEW.scopes := '{}';
+  END IF;
+
+  FOREACH _s IN ARRAY NEW.scopes LOOP
+    IF NOT (_s = ANY (_allowed)) THEN
+      RAISE EXCEPTION 'invalid_api_key_scope:%', _s;
+    END IF;
+  END LOOP;
+
+  IF NEW.key_type = 'publishable' THEN
+    FOREACH _s IN ARRAY NEW.scopes LOOP
+      IF NOT (_s = ANY (_pub)) THEN
+        RAISE EXCEPTION 'publishable_scope_forbidden:%', _s;
+      END IF;
+    END LOOP;
+  END IF;
+
+  RETURN NEW;
 END;
 $$;
 
@@ -942,6 +995,11 @@ DROP TRIGGER IF EXISTS fill_audit_org ON public.audit_log;
 CREATE TRIGGER fill_audit_org
   BEFORE INSERT ON public.audit_log
   FOR EACH ROW EXECUTE FUNCTION public.fill_audit_org();
+
+DROP TRIGGER IF EXISTS trg_guard_api_key_scopes ON public.api_keys;
+CREATE TRIGGER trg_guard_api_key_scopes
+  BEFORE INSERT OR UPDATE OF scopes, key_type ON public.api_keys
+  FOR EACH ROW EXECUTE FUNCTION public.guard_api_key_scopes();
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- §5 POLICIES (final state: workspace isolation + read perms + billing)
@@ -1369,7 +1427,8 @@ WHERE pronamespace = 'public'::regnamespace
     'guard_profile_org_change', 'set_role_permission_org',
     'set_grant_org', 'fill_audit_org', 'grant_creator_membership',
     'handle_new_user', 'sync_subscription',
-    'has_active_subscription', '_api_key_id', 'api_key_meta', 'api_whoami', 'api_check',
-    'api_grant_role', 'api_revoke_grant', 'api_list_roles', 'api_list_permissions')
+    'has_active_subscription', '_api_key_id', 'api_key_has_scope', 'api_key_meta', 'api_whoami', 'api_check',
+    'api_grant_role', 'api_revoke_grant', 'api_list_roles', 'api_list_permissions',
+    'guard_api_key_scopes')
 ORDER BY proname;
 ...[truncated 14068 chars]

@@ -9,6 +9,7 @@ import {
   checkCorsHeaders,
   misconfigured,
   publicClient,
+  requireScope,
   resolveApiKey,
   unauthorized,
   withCors,
@@ -33,6 +34,8 @@ export async function GET(req: Request) {
 
   const meta = await resolveApiKey(raw);
   if (!meta) return withCors(unauthorized());
+  const scopeErr = requireScope(meta, "check");
+  if (scopeErr) return withCors(scopeErr);
 
   const url = new URL(req.url);
   const permission = url.searchParams.get("permission") ?? "";

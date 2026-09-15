@@ -3,10 +3,10 @@ import { hashApiKey } from "@/lib/api-keys";
 import {
   badRequest,
   bearerHash,
-  forbidden,
   misconfigured,
   notFound,
   publicClient,
+  requireScope,
   resolveApiKey,
   unauthorized,
 } from "../auth";
@@ -30,9 +30,8 @@ export async function POST(req: Request) {
 
   const meta = await resolveApiKey(raw);
   if (!meta) return unauthorized();
-  if (meta.key_type !== "secret") {
-    return forbidden("Publishable keys cannot grant roles");
-  }
+  const scopeErr = requireScope(meta, "grants.write");
+  if (scopeErr) return scopeErr;
 
   const parsed = GrantBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return badRequest("Expected { role: slug, subject: external_id, display_name?: string }");
@@ -65,9 +64,8 @@ export async function DELETE(req: Request) {
 
   const meta = await resolveApiKey(raw);
   if (!meta) return unauthorized();
-  if (meta.key_type !== "secret") {
-    return forbidden("Publishable keys cannot revoke roles");
-  }
+  const scopeErr = requireScope(meta, "grants.write");
+  if (scopeErr) return scopeErr;
 
   const parsed = GrantBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return badRequest("Expected { role: slug, subject: external_id }");

@@ -3,9 +3,11 @@
  * server routes, and the edge runtime). Raw keys only ever exist in memory
  * at creation time; only the SHA-256 hex is stored.
  *
- * secret:       kr_sk_live_…  (server-only; grant/revoke/list/check/mint)
- * publishable:  kr_pk_live_…  (browser-safe; check + subject token only)
+ * secret:       kr_sk_live_…  (server-only; capabilities from selected scopes)
+ * publishable:  kr_pk_live_…  (browser-safe; check scope only + subject token)
  * legacy:       kr_live_…     (treated as secret)
+ *
+ * Scopes live on the api_keys row — see api-key-scopes.ts.
  */
 
 export type ApiKeyKind = "secret" | "publishable";

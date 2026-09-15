@@ -3,8 +3,8 @@ import { mintSubjectToken } from "@/lib/subject-tokens";
 import {
   badRequest,
   bearerHash,
-  forbidden,
   misconfigured,
+  requireScope,
   resolveApiKey,
   unauthorized,
 } from "../auth";
@@ -16,8 +16,9 @@ const Body = z.object({
 
 /*
  * POST /api/v1/subject-tokens { subject, ttl_seconds? }
- * Secret key only. Mints a short-lived JWT the browser pairs with a
- * publishable key for GET /api/v1/check.
+ * Requires subject_tokens.write (secret keys only in practice — publishable
+ * keys cannot hold this scope). Mints a short-lived JWT the browser pairs
+ * with a publishable key for GET /api/v1/check.
  */
 export async function POST(req: Request) {
   const raw = bearerHash(req);
@@ -28,9 +29,8 @@ export async function POST(req: Request) {
 
   const meta = await resolveApiKey(raw);
   if (!meta) return unauthorized();
-  if (meta.key_type !== "secret") {
-    return forbidden("Publishable keys cannot mint subject tokens");
-  }
+  const scopeErr = requireScope(meta, "subject_tokens.write");
+  if (scopeErr) return scopeErr;
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

@@ -408,7 +408,7 @@ export function OverviewSetupSteps({
     existingRoles.length > 0
       ? `- I already have these roles defined: ${existingRoles.join(", ")}. Adjust role-action mappings if needed.`
       : `- Create customer roles (e.g., "admin", "editor", "viewer") grouping those permission actions.`,
-    `- Implement backend middleware with the secret key (or @keyring/sdk) calling /api/v1/check to enforce permissions. Use publishable keys only for frontend UX checks with subject tokens.`,
+    `- Implement backend middleware with a secret key that includes the check scope (or @keyring/sdk) calling /api/v1/check. Key scopes (check, grants.write, roles.read, actions.read, subject_tokens.write) gate each endpoint. Publishable keys are check-only with subject tokens.`,
   ].join("\n");
 
   const copyPrompt = () => {

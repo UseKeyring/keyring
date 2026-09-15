@@ -48,6 +48,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          expires_at: string | null
           id: string
           key_hash: string
           key_type: "secret" | "publishable"
@@ -56,10 +57,12 @@ export type Database = {
           organization_id: string | null
           prefix: string
           revoked_at: string | null
+          scopes: string[]
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           key_hash: string
           key_type?: "secret" | "publishable"
@@ -68,10 +71,12 @@ export type Database = {
           organization_id?: string | null
           prefix: string
           revoked_at?: string | null
+          scopes?: string[]
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           key_hash?: string
           key_type?: "secret" | "publishable"
@@ -80,6 +85,7 @@ export type Database = {
           organization_id?: string | null
           prefix?: string
           revoked_at?: string | null
+          scopes?: string[]
         }
         Relationships: [
           {
