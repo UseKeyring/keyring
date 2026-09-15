@@ -5,10 +5,16 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-11",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // Keep workers.dev + previews on: the custom domain adds an address,
+  // it doesn't replace the existing ones.
+  "workers_dev": true,
+  "preview_urls": true,
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS",
   },
+  // Custom domain (zone already on Cloudflare — DNS + cert auto-provision).
+  "routes": [{ "pattern": "usekeyring.dev", "custom_domain": true }],
   // No `vars`: the app only needs NEXT_PUBLIC_* build-time vars (inlined by
   // `next build`). All secrets live in Supabase edge functions, not here.
 }
