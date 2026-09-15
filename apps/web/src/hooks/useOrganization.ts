@@ -218,8 +218,8 @@ export function useOrganizationMutations() {
     support_email?: string | null;
   }) => {
     if (!user) throw new Error("Not signed in");
-    if (input.slug.trim().toLowerCase() === "account") {
-      throw new Error('Slug "account" is reserved — pick another one.');
+    if (input.slug.trim().toLowerCase() === "account" || input.slug.trim().toLowerCase() === "new") {
+      throw new Error(`Slug "${input.slug.trim().toLowerCase()}" is reserved — pick another one.`);
     }
     const supabase = getSupabaseBrowserClient();
     // Friendly pre-check; RLS ("subscribed create organizations" in 0010)

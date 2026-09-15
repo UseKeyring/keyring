@@ -111,6 +111,11 @@ function WorkspaceSwitcher() {
     router.push(`/dashboard/${slug}`);
   };
 
+  const goNew = () => {
+    if (isMobile) setOpenMobile(false);
+    router.push("/dashboard/new");
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -159,6 +164,14 @@ function WorkspaceSwitcher() {
             </DropdownMenuItem>
           );
         })}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="flex flex-row items-center gap-x-2"
+          onClick={() => goNew()}
+        >
+          <SolarIcon name="plus" className="h-4 w-4" />
+          <span className="min-w-0 flex-1 truncate">Add workspace</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

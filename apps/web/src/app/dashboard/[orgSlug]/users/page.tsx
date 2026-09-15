@@ -17,10 +17,10 @@ import {
 import { Button } from "@keyring/ui/components/button";
 import { Checkbox } from "@keyring/ui/components/checkbox";
 import { Input } from "@keyring/ui/components/input";
-import { Label } from "@keyring/ui/components/label";
 import { NoAccess } from "@keyring/ui/components/no-access";
 import { TableSkeleton } from "@keyring/ui/components/skeletons";
 import { useMyOrganization } from "@/hooks/useOrganization";
+import { AddUserDialog } from "./add-user-dialog";
 
 export default function UsersPage() {
   const subjects = useSubjects();
@@ -32,36 +32,13 @@ export default function UsersPage() {
   const qc = useQueryClient();
   const editable = can("users.manage");
 
-  const [externalId, setExternalId] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["subjects"] });
     qc.invalidateQueries({ queryKey: ["grants"] });
     qc.invalidateQueries({ queryKey: ["audit_log"] });
-  };
-
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!externalId.trim() || !orgId) return;
-    setSaving(true);
-    const { error } = await getSupabaseBrowserClient().from("subjects").insert({
-      external_id: externalId.trim(),
-      display_name: displayName.trim() || null,
-      organization_id: orgId,
-    });
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    if (user) await logAction(user.id, "subject.created", externalId.trim());
-    setExternalId("");
-    setDisplayName("");
-    refresh();
-    toast.success("User added");
   };
 
   const remove = async (s: Subject) => {
@@ -126,43 +103,19 @@ export default function UsersPage() {
             never sign into this console — access is checked per subject.
           </p>
         </div>
-        <div className="relative w-full md:max-w-xs">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search users"
-          />
+        <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:items-center">
+          <div className="relative w-full md:w-auto md:min-w-[220px]">
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search users"
+            />
+          </div>
+          {editable && <Button onClick={() => setAddOpen(true)}>Add user</Button>}
         </div>
       </div>
 
-      {editable && (
-        <form
-          onSubmit={create}
-          className="grid gap-4 rounded-2xl border border-hairline bg-pillar p-6 md:grid-cols-3 md:p-8 dark:border-transparent dark:bg-polar-800"
-        >
-          <div className="space-y-2">
-            <Label>External ID</Label>
-            <Input
-              value={externalId}
-              onChange={(e) => setExternalId(e.target.value)}
-              placeholder="user_123"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Display name</Label>
-            <Input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Optional"
-            />
-          </div>
-          <div className="flex items-end">
-            <Button type="submit" disabled={saving}>
-              {saving ? "Adding…" : "Add user"}
-            </Button>
-          </div>
-        </form>
-      )}
+      {editable && <AddUserDialog open={addOpen} onOpenChange={setAddOpen} />}
 
       {loading ? (
         <TableSkeleton rows={6} columns={customerRoles.length + 2 || 3} />
@@ -221,7 +174,7 @@ export default function UsersPage() {
                     className="px-6 py-6 text-ink-muted md:px-8"
                     colSpan={customerRoles.length + 2}
                   >
-                    {q ? "No users match." : "No users yet — add your first subject above."}
+                    {q ? "No users match." : "No users yet — click Add user to create your first subject."}
                   </td>
                 </tr>
               )}
