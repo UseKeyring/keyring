@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { LandingCta } from "../landing-cta";
 import { SiteFooter } from "../site-footer";
 import { SiteNav } from "../site-nav";
@@ -12,6 +13,10 @@ export const metadata: Metadata = {
   description:
     "Start free, upgrade when your product grows. Every plan includes the full console.",
 };
+
+// Runtime toggle (WAITLIST) needs per-request rendering so the page can
+// bounce to /waitlist while the beta is on.
+export const dynamic = "force-dynamic";
 
 /*
  * Pricing tiers are placeholders — adjust numbers, limits and feature gates
@@ -102,6 +107,9 @@ const FAQS = [
 ];
 
 export default function PricingPage() {
+  // Private beta: no public pricing while the waitlist is on — direct URL
+  // entry bounces to /waitlist (middleware enforces this too).
+  if (isWaitlistEnabled()) redirect("/waitlist");
   const waitlist = isWaitlistEnabled();
   return (
     <main className="min-h-screen bg-canvas">

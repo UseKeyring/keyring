@@ -1,11 +1,12 @@
-"use client";
-
-import { useMemo } from "react";
-
 /*
  * Hand-drawn one-stroke line glyphs — Polar's only decorative voice.
  * Pure-black stroke, transparent fill, sharp bounding box. Jitter is
  * deterministic (seeded) so server and client render identically.
+ *
+ * Server component (no "use client"): coordinates are computed once at
+ * render time and shipped as static SVG — nothing re-runs on hydration,
+ * so engine-level Math.sin/cos ULP differences can't mismatch.
+ * Coordinates are quantized to 3 decimals to keep output stable + small.
  */
 
 function seeded(seed: number) {
@@ -16,21 +17,24 @@ function seeded(seed: number) {
   };
 }
 
+// Quantize to 3 decimals: collapses cross-engine float noise and shrinks HTML.
+function q(n: number): number {
+  return Math.round(n * 1000) / 1000;
+}
+
 function StarburstLines({ count, seed, r1, r2 }: { count: number; seed: number; r1: number; r2: number }) {
-  const lines = useMemo(() => {
-    const rand = seeded(seed);
-    return Array.from({ length: count }, (_, i) => {
-      const a = (i / count) * Math.PI * 2 + (rand() - 0.5) * 0.08;
-      const inner = r1 * (0.9 + rand() * 0.2);
-      const outer = r2 * (0.92 + rand() * 0.16);
-      return {
-        x1: 60 + Math.cos(a) * inner,
-        y1: 60 + Math.sin(a) * inner,
-        x2: 60 + Math.cos(a) * outer,
-        y2: 60 + Math.sin(a) * outer,
-      };
-    });
-  }, [count, seed, r1, r2]);
+  const rand = seeded(seed);
+  const lines = Array.from({ length: count }, (_, i) => {
+    const a = (i / count) * Math.PI * 2 + (rand() - 0.5) * 0.08;
+    const inner = r1 * (0.9 + rand() * 0.2);
+    const outer = r2 * (0.92 + rand() * 0.16);
+    return {
+      x1: q(60 + Math.cos(a) * inner),
+      y1: q(60 + Math.sin(a) * inner),
+      x2: q(60 + Math.cos(a) * outer),
+      y2: q(60 + Math.sin(a) * outer),
+    };
+  });
   return (
     <g>
       {lines.map((l, i) => (
@@ -87,14 +91,12 @@ export function GlyphOrbitCircles() {
 }
 
 export function GlyphSpiral() {
-  const d = useMemo(() => {
-    const pts: string[] = [];
-    for (let t = 0; t <= Math.PI * 6; t += 0.15) {
-      const r = 4 + t * 2.1;
-      pts.push(`${t === 0 ? "M" : "L"}${(60 + Math.cos(t) * r).toFixed(1)},${(60 + Math.sin(t) * r).toFixed(1)}`);
-    }
-    return pts.join(" ");
-  }, []);
+  const pts: string[] = [];
+  for (let t = 0; t <= Math.PI * 6; t += 0.15) {
+    const r = 4 + t * 2.1;
+    pts.push(`${t === 0 ? "M" : "L"}${(60 + Math.cos(t) * r).toFixed(1)},${(60 + Math.sin(t) * r).toFixed(1)}`);
+  }
+  const d = pts.join(" ");
   return (
     <GlyphFrame label="Inward spiral">
       <path d={d} />
@@ -114,13 +116,11 @@ export function GlyphSerpentine() {
 }
 
 export function GlyphRules() {
-  const rows = useMemo(() => {
-    const rand = seeded(99);
-    return Array.from({ length: 7 }, (_, i) => {
-      const w = 84 * (0.55 + rand() * 0.45);
-      return { y: 22 + i * 12, w };
-    });
-  }, []);
+  const rand = seeded(99);
+  const rows = Array.from({ length: 7 }, (_, i) => {
+    const w = q(84 * (0.55 + rand() * 0.45));
+    return { y: 22 + i * 12, w };
+  });
   return (
     <GlyphFrame label="Stack of rules">
       {rows.map((r, i) => (

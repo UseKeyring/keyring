@@ -2,6 +2,26 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 export async function middleware(request: NextRequest) {
+  // Private beta: while the waitlist is on, marketing routes beyond the
+  // landing have no public content — bounce them to /waitlist before any
+  // session work. Covers direct URL entry, not just hidden nav links.
+  const waitlistRaw = (
+    process.env["NEXT_PUBLIC_WAITLIST"] ??
+    process.env["WAITLIST"] ??
+    ""
+  ).toLowerCase();
+  const waitlistOn =
+    waitlistRaw === "true" || waitlistRaw === "1" || waitlistRaw === "yes";
+  if (waitlistOn) {
+    const { pathname } = request.nextUrl;
+    if (pathname === "/pricing" || pathname.startsWith("/pricing/")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/waitlist";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   const response = NextResponse.next({ request });
   // Env precedence is unified across middleware, server clients, and the
   // browser client: NEXT_PUBLIC_* first so every layer resolves to the same
