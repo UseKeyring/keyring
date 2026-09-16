@@ -1,0 +1,43 @@
+{
+  "name": "@keyring/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Keyring access control — let AI agents check access, manage roles, grants and subject tokens",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "bin": {
+    "keyring-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check-types": "tsc --noEmit --incremental --tsBuildInfoFile .cache/typecheck.tsbuildinfo",
+    "dev": "tsc -p tsconfig.json --watch",
+    "start": "node dist/index.js",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@keyring/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@keyring/typescript-config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
