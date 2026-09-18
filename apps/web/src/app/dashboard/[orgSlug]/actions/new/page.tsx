@@ -12,6 +12,7 @@ import { Input } from "@keyring/ui/components/input";
 import { Label } from "@keyring/ui/components/label";
 import { Section } from "@keyring/ui/components/section";
 import { useDashboardBase } from "../../../dashboard-chrome";
+import { CreateWithAiButton } from "@/components/create-with-ai-button";
 
 export default function NewActionPage() {
   const { can } = useMyAccess();
@@ -65,11 +66,14 @@ export default function NewActionPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-medium whitespace-nowrap text-ink">Create action</h1>
-        <p className="type-body-sm mt-1 text-ink-muted">
-          Define one atomic thing a user can do. Roles are built out of these.
-        </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h1 className="text-2xl font-medium whitespace-nowrap text-ink">Create action</h1>
+          <p className="type-body-sm mt-1 text-ink-muted">
+            Define one atomic thing a user can do. Roles are built out of these.
+          </p>
+        </div>
+        <CreateWithAiButton href={`${base}/actions/new/ai`} />
       </div>
 
       <div className="flex flex-col rounded-4xl border border-hairline">

@@ -15,6 +15,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@earendil-works/pi-coding-agent": "^0.85.1",
     "@hookform/resolvers": "^5.2.2",
     "@iconify-icons/solar": "^2.0.1",
     "@iconify/react": "^6.0.2",

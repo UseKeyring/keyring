@@ -13,6 +13,7 @@ import { Input } from "@keyring/ui/components/input";
 import { Label } from "@keyring/ui/components/label";
 import { Section } from "@keyring/ui/components/section";
 import { useDashboardBase } from "../../../dashboard-chrome";
+import { CreateWithAiButton } from "@/components/create-with-ai-button";
 
 export default function NewRolePage() {
   const { can } = useMyAccess();
@@ -98,11 +99,14 @@ export default function NewRolePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-medium whitespace-nowrap text-ink">Create role</h1>
-        <p className="type-body-sm mt-1 text-ink-muted">
-          Bundle actions into a named role. Select the permissions it should hold.
-        </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h1 className="text-2xl font-medium whitespace-nowrap text-ink">Create role</h1>
+          <p className="type-body-sm mt-1 text-ink-muted">
+            Bundle actions into a named role. Select the permissions it should hold.
+          </p>
+        </div>
+        <CreateWithAiButton href={`${base}/roles/new/ai`} />
       </div>
 
       <div className="flex flex-col rounded-4xl border border-hairline">

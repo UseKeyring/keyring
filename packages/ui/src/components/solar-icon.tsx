@@ -10,6 +10,7 @@ import checkReadOutline from '@iconify-icons/solar/check-read-outline'
 import closeCircleOutline from '@iconify-icons/solar/close-circle-outline'
 import hamburgerMenuOutline from '@iconify-icons/solar/hamburger-menu-outline'
 import logoutOutline from '@iconify-icons/solar/logout-outline'
+import magicStickOutline from '@iconify-icons/solar/magic-stick-outline'
 import magniferOutline from '@iconify-icons/solar/magnifer-outline'
 import monitorOutline from '@iconify-icons/solar/monitor-outline'
 import moonOutline from '@iconify-icons/solar/moon-outline'
@@ -51,6 +52,7 @@ const ICONS = {
   sidebar: sidebarMinimalisticOutline,
   reply: replyOutline,
   settings: settingsOutline,
+  wand: magicStickOutline,
 } as const
 
 export type SolarName = keyof typeof ICONS
