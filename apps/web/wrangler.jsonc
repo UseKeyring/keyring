@@ -15,6 +15,11 @@
   },
   // Custom domain (zone already on Cloudflare — DNS + cert auto-provision).
   "routes": [{ "pattern": "usekeyring.dev", "custom_domain": true }],
+  // Runtime vars for /api/agent (non-sensitive; the key itself is a secret).
+  "vars": {
+    "AGENT_AI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "AGENT_AI_MODEL": "gemini-3.6-flash"
+  },
   // No `vars`: the app only needs NEXT_PUBLIC_* build-time vars (inlined by
   // `next build`). All secrets live in Supabase edge functions, not here.
 }
