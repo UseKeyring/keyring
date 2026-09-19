@@ -14,6 +14,8 @@ export type Organization = {
   support_email: string | null;
   created_by: string | null;
   created_at: string;
+  telemetry_enabled: boolean;
+  telemetry_subject_mode: string;
 };
 
 export function slugify(value: string) {

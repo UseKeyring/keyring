@@ -16,7 +16,7 @@ bun add @keyring/sdk
 | Secret | `kr_sk_live_…` (legacy `kr_live_…`) | Server env only | Any selected Management API scopes |
 | Publishable | `kr_pk_live_…` | Frontend (`NEXT_PUBLIC_…`) | `check` only (with a subject token) |
 
-Scopes are chosen when you create the key (Polar-style picker): `check`, `grants.write`, `roles.read`, `actions.read`, `subject_tokens.write`. Missing a scope → `403`.
+Scopes are chosen when you create the key (Polar-style picker): `check`, `grants.write`, `roles.read`, `actions.read`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Missing a scope → `403`.
 
 Create keys in the Keyring console under **Settings → API keys**.
 
@@ -39,6 +39,11 @@ await keyring.grantRole({
 });
 
 const { allowed } = await keyring.check(user.id, "invoices.refund");
+
+// Manual telemetry event (checks auto-log; secret key needs telemetry.write):
+await keyring.track(user.id, "invoices.refund", {
+  context: { source: "refund-dialog" },
+});
 
 // After your own login (Clerk / Supabase / WorkOS / …), mint a token for the browser:
 const { token, expiresAt } = await keyring.createSubjectToken({

@@ -11,6 +11,8 @@ export const API_KEY_SCOPES = [
   "roles.read",
   "actions.read",
   "subject_tokens.write",
+  "telemetry.read",
+  "telemetry.write",
 ] as const;
 
 export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];

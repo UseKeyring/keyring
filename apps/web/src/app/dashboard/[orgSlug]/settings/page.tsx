@@ -32,6 +32,7 @@ import {
 } from "./org-fields";
 import { ApiKeysSection } from "./api-keys";
 import { BackupsSection } from "./backups";
+import { TelemetrySection } from "./telemetry";
 import { SettingsSkeleton } from "@keyring/ui/components/skeletons";
 
 
@@ -248,6 +249,7 @@ export default function SettingsPage() {
         <>
           <EditOrganization key={org.data.id} />
           <ApiKeysSection />
+          <TelemetrySection />
           <BackupsSection />
           <DangerZone />
         </>

@@ -77,3 +77,13 @@ export type CreateSubjectTokenInput = {
 export type CheckOptions = {
   subjectToken?: string;
 };
+
+export type TrackOptions = {
+  allowed?: boolean;
+  context?: Record<string, unknown>;
+};
+
+export type TrackResult = {
+  ok: true;
+  id: string;
+};

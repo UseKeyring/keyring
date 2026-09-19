@@ -15,6 +15,8 @@ import type {
   Role,
   SubjectTokenResult,
   SubjectTokenSource,
+  TrackOptions,
+  TrackResult,
 } from "./types.js";
 
 async function resolveSubjectToken(
@@ -203,6 +205,33 @@ export class Keyring {
   /** Alias for listPermissions() — matches product “actions” language. */
   listActions(): Promise<Permission[]> {
     return this.listPermissions();
+  }
+
+  /**
+   * Manual telemetry event, paired with auto-logged check() rows.
+   * Secret key with `telemetry.write` scope only. When `allowed` is omitted
+   * the server resolves it against the RBAC graph at track time.
+   */
+  async track(
+    subject: string,
+    permission: string,
+    opts?: TrackOptions,
+  ): Promise<TrackResult> {
+    requireSecretKey(this.apiKey, "track custom events");
+    return apiRequest<TrackResult>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/events",
+      method: "POST",
+      body: {
+        subject,
+        permission,
+        allowed: opts?.allowed,
+        context: opts?.context ?? {},
+      },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
   }
 
   private requestCheck(input: {

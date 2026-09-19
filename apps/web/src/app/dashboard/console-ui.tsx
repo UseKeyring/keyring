@@ -93,7 +93,7 @@ export function ConsoleNavLink({
       // the app pixel-for-pixel.
       className={cn(
         sidebarMenuButtonVariants({ variant: "default", size: "default" }),
-        "flex flex-row items-center rounded-lg border border-transparent px-1.5 transition-colors group-data-[collapsible=icon]:px-0! group-data-[collapsible=icon]:justify-center!",
+        "flex flex-row items-center rounded-full border border-transparent px-1.5 transition-colors group-data-[collapsible=icon]:px-0! group-data-[collapsible=icon]:justify-center!",
         active
           ? "border-hairline! bg-pillar! text-ink! shadow-xs dark:border-polar-800! dark:bg-polar-900! dark:text-white!"
           : "text-ink-muted hover:text-ink dark:text-polar-500 dark:hover:text-polar-200",

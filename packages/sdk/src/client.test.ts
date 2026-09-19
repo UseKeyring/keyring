@@ -161,4 +161,38 @@ describe("Keyring SDK", () => {
       ttl_seconds: 120,
     });
   });
+
+  test("track posts custom event", async () => {
+    let captured: Captured | null = null;
+    const keyring = new Keyring({
+      apiKey: "kr_sk_live_test",
+      baseUrl: "https://keyring.example",
+      fetch: mockFetch((req) => {
+        captured = req;
+        return { status: 201, body: { ok: true, id: "evt_1" } };
+      }),
+    });
+    const result = await keyring.track("user_1", "invoices.refund", {
+      allowed: true,
+      context: { source: "test" },
+    });
+    expect(result.id).toBe("evt_1");
+    expect(captured?.method).toBe("POST");
+    expect(captured?.url).toContain("/api/v1/events");
+    expect(JSON.parse(captured?.body ?? "{}")).toEqual({
+      subject: "user_1",
+      permission: "invoices.refund",
+      allowed: true,
+      context: { source: "test" },
+    });
+  });
+
+  test("publishable key cannot track", async () => {
+    const keyring = new Keyring({
+      apiKey: "kr_pk_live_test",
+      baseUrl: "https://keyring.example",
+      fetch: mockFetch(() => ({ status: 201, body: {} })),
+    });
+    expect(keyring.track("user_1", "x")).rejects.toThrow(/cannot track/);
+  });
 });

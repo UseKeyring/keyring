@@ -42,7 +42,7 @@ export function CopyToClipboardInput({
   return (
     <div
       className={twMerge(
-        'flex w-full flex-row items-center overflow-hidden rounded-xl border border-hairline bg-canvas shadow-xs dark:border-polar-700 dark:bg-polar-800',
+        'flex w-full flex-row items-center overflow-hidden rounded-full border border-hairline bg-canvas shadow-xs dark:border-polar-700 dark:bg-polar-800',
         className,
       )}
     >

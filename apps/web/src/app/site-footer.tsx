@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button } from "@keyring/ui/components/button";
 import { SiteWordmark } from "./site-nav";
 import { SolarIcon } from "@keyring/ui/components/solar-icon";
 
@@ -47,19 +48,19 @@ export function SiteFooter({ waitlist = false }: { waitlist?: boolean }) {
           <SiteWordmark size="text-lg" />
           <div className="flex flex-col gap-4">
             {waitlist ? (
-              <a href="/waitlist" className="w-fit border-b border-current pb-0.5">
-                <span className="type-label inline-flex items-center gap-1 text-ink-navy">
+              <Button asChild>
+                <a href="/waitlist">
                   Join the waitlist
                   <SolarIcon name="arrowUpRight" className="h-4 w-4" />
-                </span>
-              </a>
+                </a>
+              </Button>
             ) : (
-              <Link href="/auth" className="w-fit border-b border-current pb-0.5">
-                <span className="type-label inline-flex items-center gap-1 text-ink-navy">
+              <Button asChild>
+                <Link href="/auth">
                   Create your workspace
                   <SolarIcon name="arrowUpRight" className="h-4 w-4" />
-                </span>
-              </Link>
+                </Link>
+              </Button>
             )}
             <p className="type-body-sm text-ink-muted">
               &copy; Keyring {new Date().getFullYear()}

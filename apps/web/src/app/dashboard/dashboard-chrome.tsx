@@ -69,6 +69,7 @@ function buildNav(base: string): { overview: NavEntry; sections: NavSection[] } 
       {
         label: "System",
         items: [
+          { to: `${base}/telemetry`, label: "Telemetry", icon: "activity", read: "telemetry.read" },
           { to: `${base}/audit`, label: "Activity", icon: "activity", read: "audit.read" },
           { to: `${base}/settings`, label: "Settings", icon: "settings" },
         ],

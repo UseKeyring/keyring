@@ -44,6 +44,51 @@ export type Database = {
         }
         Relationships: []
       }
+      check_events: {
+        Row: {
+          allowed: boolean
+          api_key_id: string | null
+          context: Json
+          created_at: string
+          event_type: string
+          id: string
+          matched_role_slugs: string[]
+          organization_id: string
+          permission_id: string | null
+          permission_slug: string
+          subject_external_id: string
+          subject_id: string | null
+        }
+        Insert: {
+          allowed: boolean
+          api_key_id?: string | null
+          context?: Json
+          created_at?: string
+          event_type?: string
+          id?: string
+          matched_role_slugs?: string[]
+          organization_id: string
+          permission_id?: string | null
+          permission_slug: string
+          subject_external_id: string
+          subject_id?: string | null
+        }
+        Update: {
+          allowed?: boolean
+          api_key_id?: string | null
+          context?: Json
+          created_at?: string
+          event_type?: string
+          id?: string
+          matched_role_slugs?: string[]
+          organization_id?: string
+          permission_id?: string | null
+          permission_slug?: string
+          subject_external_id?: string
+          subject_id?: string | null
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string
@@ -177,6 +222,8 @@ export type Database = {
           name: string
           slug: string
           support_email: string | null
+          telemetry_enabled: boolean
+          telemetry_subject_mode: string
           website: string | null
         }
         Insert: {
@@ -187,6 +234,8 @@ export type Database = {
           name: string
           slug: string
           support_email?: string | null
+          telemetry_enabled?: boolean
+          telemetry_subject_mode?: string
           website?: string | null
         }
         Update: {
@@ -197,6 +246,8 @@ export type Database = {
           name?: string
           slug?: string
           support_email?: string | null
+          telemetry_enabled?: boolean
+          telemetry_subject_mode?: string
           website?: string | null
         }
         Relationships: []
@@ -670,6 +721,17 @@ export type Database = {
       api_key_meta: { Args: { _hash: string }; Returns: Json }
       api_whoami: { Args: { _hash: string }; Returns: Json }
       api_check: { Args: { _hash: string; _subject: string; _perm: string }; Returns: boolean }
+      api_track_event: {
+        Args: {
+          _hash: string
+          _subject: string
+          _perm: string
+          _allowed?: boolean | null
+          _context?: Json
+        }
+        Returns: string
+      }
+      purge_check_events: { Args: { _org: string; _days?: number }; Returns: number }
       api_grant_role: { Args: { _hash: string; _role: string; _subject: string; _display_name?: string | null }; Returns: boolean }
       api_revoke_grant: { Args: { _hash: string; _role: string; _subject: string }; Returns: boolean }
       api_list_roles: { Args: { _hash: string }; Returns: Json }

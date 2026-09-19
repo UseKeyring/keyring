@@ -24,4 +24,6 @@ export type {
   Role,
   SubjectTokenResult,
   SubjectTokenSource,
+  TrackOptions,
+  TrackResult,
 } from "./types.js";
