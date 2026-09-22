@@ -10,8 +10,10 @@ export {
 export { detectKeyKind } from "./key-kind.js";
 export { SUBJECT_TOKEN_HEADER } from "./http.js";
 export type {
+  AbacCondition,
   CheckOptions,
   CheckResult,
+  CheckWithContextInput,
   CreateSubjectTokenInput,
   GrantInput,
   GrantResult,
@@ -22,6 +24,8 @@ export type {
   RevokeInput,
   RevokeResult,
   Role,
+  SetSubjectAttrsInput,
+  SetSubjectAttrsResult,
   SubjectTokenResult,
   SubjectTokenSource,
   TrackOptions,

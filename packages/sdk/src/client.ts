@@ -13,6 +13,8 @@ import type {
   RevokeInput,
   RevokeResult,
   Role,
+  SetSubjectAttrsInput,
+  SetSubjectAttrsResult,
   SubjectTokenResult,
   SubjectTokenSource,
   TrackOptions,
@@ -50,20 +52,24 @@ export class Keyring {
   }
 
   /**
-   * Server (secret key): `check(subject, permission)`
-   * Browser (publishable key): `check(permission)` or `check(permission, { subjectToken })`
+   * Server (secret key): `check(subject, permission)` or
+   * `check(subject, permission, { context })` for ABAC.
+   * Browser (publishable key): `check(permission)` or
+   * `check(permission, { subjectToken, context })`
    */
-  check(subject: string, permission: string): Promise<CheckResult>;
+  check(subject: string, permission: string, opts?: { context?: Record<string, unknown> }): Promise<CheckResult>;
   check(permission: string, opts?: CheckOptions): Promise<CheckResult>;
   async check(
     subjectOrPermission: string,
     permissionOrOpts?: string | CheckOptions,
+    secretOpts?: { context?: Record<string, unknown> },
   ): Promise<CheckResult> {
     if (typeof permissionOrOpts === "string") {
       requireSecretKey(this.apiKey, "pass a raw subject to check()");
       return this.requestCheck({
         subject: subjectOrPermission,
         permission: permissionOrOpts,
+        context: secretOpts?.context,
       });
     }
 
@@ -86,6 +92,7 @@ export class Keyring {
     return this.requestCheck({
       permission: subjectOrPermission,
       subjectToken,
+      context: permissionOrOpts?.context,
     });
   }
 
@@ -143,6 +150,30 @@ export class Keyring {
         role: input.role,
         subject: input.subject,
         display_name: input.displayName,
+        expires_at:
+          input.expiresAt instanceof Date
+            ? input.expiresAt.toISOString()
+            : (input.expiresAt ?? undefined),
+        ttl_seconds: input.ttlSeconds,
+        condition: input.condition,
+      },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+  }
+
+  /** Upsert subject attributes (merged) — feeds ABAC grant conditions. */
+  async setSubjectAttrs(input: SetSubjectAttrsInput): Promise<SetSubjectAttrsResult> {
+    requireSecretKey(this.apiKey, "set subject attributes");
+    return apiRequest<SetSubjectAttrsResult>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/subjects",
+      method: "POST",
+      body: {
+        subject: input.subject,
+        attrs: input.attrs,
+        display_name: input.displayName,
       },
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
@@ -171,6 +202,9 @@ export class Keyring {
       role: input.to,
       subject: input.subject,
       displayName: input.displayName,
+      ...(input.expiresAt != null ? { expiresAt: input.expiresAt } : {}),
+      ...(input.ttlSeconds != null ? { ttlSeconds: input.ttlSeconds } : {}),
+      ...(input.condition != null ? { condition: input.condition } : {}),
     });
     await this.revokeRole({
       role: input.from,
@@ -238,15 +272,22 @@ export class Keyring {
     permission: string;
     subject?: string;
     subjectToken?: string;
+    context?: Record<string, unknown>;
   }): Promise<CheckResult> {
+    // Secret-key path can also pass an explicit subject + context.
+    // Browser path resolves subject from the JWT; context rides along.
+    const query: Record<string, string | undefined> = {
+      permission: input.permission,
+      subject: input.subject,
+    };
+    if (input.context && Object.keys(input.context).length > 0) {
+      query["context"] = JSON.stringify(input.context);
+    }
     return apiRequest<CheckResult>({
       baseUrl: this.baseUrl,
       apiKey: this.apiKey,
       path: "/api/v1/check",
-      query: {
-        permission: input.permission,
-        subject: input.subject,
-      },
+      query,
       subjectToken: input.subjectToken,
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,

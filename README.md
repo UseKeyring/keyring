@@ -201,6 +201,12 @@ curl -X POST "$KEYRING_URL/api/v1/grants" \
   -H "Content-Type: application/json" \
   -d '{"role": "editor", "subject": "user_abc123"}'
 
+# Temporary access: role auto-expires (e.g. create repos for 5 minutes, then check() denies)
+curl -X POST "$KEYRING_URL/api/v1/grants" \
+  -H "Authorization: Bearer $KEYRING_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "repo-creator", "subject": "user_abc123", "ttl_seconds": 300}'
+
 # Mint a subject token for the browser (secret key)
 curl -X POST "$KEYRING_URL/api/v1/subject-tokens" \
   -H "Authorization: Bearer $KEYRING_SECRET_KEY" \

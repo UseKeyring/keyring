@@ -396,6 +396,7 @@ export function OverviewSetupSteps({
     `- Check (publishable): GET /api/v1/check?permission=<ACTION_SLUG> + X-Keyring-Subject-Token`,
     `- Mint subject token: POST /api/v1/subject-tokens { "subject": "<USER_ID>", "ttl_seconds"?: number }`,
     `- Grant Role: POST /api/v1/grants { "role": "<ROLE_SLUG>", "subject": "<USER_ID>" }`,
+    `- Temporary grant (e.g. 5 min): POST /api/v1/grants { "role": "<ROLE_SLUG>", "subject": "<USER_ID>", "ttl_seconds": 300 } (or "expires_at": "<ISO>"); check() denies after expiry, no revoke needed`,
     `- Revoke Role: DELETE /api/v1/grants { "role": "<ROLE_SLUG>", "subject": "<USER_ID>" }`,
     `- List Customer Roles: GET /api/v1/roles`,
     `- List Actions: GET /api/v1/permissions`,

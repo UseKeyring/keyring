@@ -13,6 +13,8 @@ export type KeyringOptions = {
   headers?: Record<string, string>;
 };
 
+export type AbacCondition = Record<string, unknown>;
+
 export type CheckResult = {
   subject: string;
   permission: string;
@@ -23,6 +25,15 @@ export type GrantResult = {
   ok: true;
   role: string;
   subject: string;
+  expires_at?: string | null;
+  ttl_seconds?: number | null;
+  condition?: AbacCondition | null;
+};
+
+export type SetSubjectAttrsResult = {
+  ok: true;
+  subject: string;
+  attrs: Record<string, unknown>;
 };
 
 export type RevokeResult = {
@@ -55,6 +66,25 @@ export type GrantInput = {
   role: string;
   subject: string;
   displayName?: string;
+  /**
+   * Temporary access: absolute expiry (Date or ISO string) or TTL in seconds
+   * (e.g. `ttlSeconds: 300` = access for the next 5 minutes).
+   * `ttlSeconds` wins when both are given. Omitted = permanent grant.
+   */
+  expiresAt?: Date | string;
+  ttlSeconds?: number;
+  /**
+   * ABAC gate on the grant, e.g. `{ attr: "plan", in: ["pro","enterprise"] }`.
+   * `{ all: [...] }`, `{ any: [...] }`, `{ not: {...} }` compose.
+   * Omitted = unconditional.
+   */
+  condition?: AbacCondition;
+};
+
+export type SetSubjectAttrsInput = {
+  subject: string;
+  attrs: Record<string, unknown>;
+  displayName?: string;
 };
 
 export type RevokeInput = {
@@ -67,6 +97,9 @@ export type ReplaceRoleInput = {
   from: string;
   to: string;
   displayName?: string;
+  expiresAt?: Date | string;
+  ttlSeconds?: number;
+  condition?: AbacCondition;
 };
 
 export type CreateSubjectTokenInput = {
@@ -76,6 +109,13 @@ export type CreateSubjectTokenInput = {
 
 export type CheckOptions = {
   subjectToken?: string;
+  /** ABAC request context, e.g. `{ plan: "pro" }` — context wins over stored attrs. */
+  context?: Record<string, unknown>;
+};
+
+export type CheckWithContextInput = {
+  permission: string;
+  context?: Record<string, unknown>;
 };
 
 export type TrackOptions = {

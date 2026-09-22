@@ -85,7 +85,7 @@ export function BillingSection() {
           description={
             subscribed
               ? "Update payment method, view invoices or cancel via Polar."
-              : "Pro is $19 per project / month. Enterprise is sales-led."
+              : "Pro is $12 per project / month. Enterprise is sales-led."
           }
         >
           <div className="flex flex-col items-end gap-2">

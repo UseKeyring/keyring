@@ -43,7 +43,7 @@ const TIERS = [
   },
   {
     name: "Pro",
-    price: "$19",
+    price: "$12",
     period: "per project / month",
     blurb: "Hosted Keyring for products with real users.",
     cta: "Start 14-day trial",
@@ -126,7 +126,7 @@ export default function PricingPage() {
                 <span className="text-ink-muted">not seats.</span>
               </h1>
               <p className="type-body mt-5 max-w-xl text-ink-muted">
-                Self-host free forever — or let us run it from $19 a project.
+                Self-host free forever — or let us run it from $12 a project.
                 Every plan includes the full console.
               </p>
             </div>

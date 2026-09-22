@@ -112,6 +112,34 @@ describe("Keyring SDK", () => {
     });
   });
 
+  test("grant forwards ttl_seconds and expires_at", async () => {
+    let captured: Captured | null = null;
+    const keyring = new Keyring({
+      apiKey: "kr_sk_live_test",
+      baseUrl: "https://keyring.example",
+      fetch: mockFetch((req) => {
+        captured = req;
+        return { status: 201, body: { ok: true, role: "repo-creator", subject: "user_1" } };
+      }),
+    });
+
+    await keyring.grantRole({ role: "repo-creator", subject: "user_1", ttlSeconds: 300 });
+    expect(JSON.parse(captured?.body ?? "{}")).toMatchObject({
+      role: "repo-creator",
+      subject: "user_1",
+      ttl_seconds: 300,
+    });
+
+    await keyring.grantRole({
+      role: "repo-creator",
+      subject: "user_1",
+      expiresAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    expect(JSON.parse(captured?.body ?? "{}")).toMatchObject({
+      expires_at: "2026-01-01T00:00:00.000Z",
+    });
+  });
+
   test("maps 401 to UnauthorizedError", async () => {
     const keyring = new Keyring({
       apiKey: "kr_sk_live_test",

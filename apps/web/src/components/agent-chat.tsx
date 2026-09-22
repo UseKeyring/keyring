@@ -37,7 +37,7 @@ export function AgentChat({ context, onActionComplete, className = "", embedded 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-grow textarea like Polar
@@ -48,9 +48,12 @@ export function AgentChat({ context, onActionComplete, className = "", embedded 
     }
   }, [input]);
 
+  // Scroll the message list itself — never scrollIntoView(), which yanks
+  // every scrollable ancestor (dashboard main, page) and pushes content up.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const el = messagesRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, isLoading]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !orgId) return;
@@ -144,8 +147,11 @@ export function AgentChat({ context, onActionComplete, className = "", embedded 
             embedded ? "" : "shadow-xl"
           }`}
         >
-          {messages.length > 0 && (
-            <div className="flex max-h-[640px] flex-1 flex-col gap-y-6 overflow-y-auto rounded-t-3xl border border-b-0 border-hairline p-6 dark:border-polar-700">
+          {(messages.length > 0 || isLoading) && (
+            <div
+              ref={messagesRef}
+              className="flex max-h-[640px] min-h-0 flex-1 flex-col gap-y-6 overflow-y-auto rounded-t-3xl border border-b-0 border-hairline p-6 dark:border-polar-700"
+            >
               {messages.map((message, index) => (
                 <div
                   key={index}
@@ -169,15 +175,6 @@ export function AgentChat({ context, onActionComplete, className = "", embedded 
                   <div className="w-full text-sm text-ink-muted">Thinking…</div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-
-          {messages.length === 0 && isLoading && (
-            <div className="flex max-h-[640px] flex-1 flex-col gap-y-6 overflow-y-auto rounded-t-3xl border border-b-0 border-hairline p-6 dark:border-polar-700">
-              <div className="flex flex-col items-start gap-y-1">
-                <div className="w-full text-sm text-ink-muted">Thinking…</div>
-              </div>
             </div>
           )}
 

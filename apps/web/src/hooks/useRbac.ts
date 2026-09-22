@@ -27,7 +27,23 @@ export type Permission = {
 };
 
 export type RolePermission = { id: string; role_id: string; permission_id: string };
-export type Grant = { id: string; role_id: string; subject_id: string };
+export type Grant = {
+  id: string;
+  role_id: string;
+  subject_id: string;
+  /** NULL = permanent; otherwise access stops authorizing after this time. */
+  expires_at: string | null;
+  /** ABAC gate, e.g. { attr: "plan", in: ["pro"] }. {} = unconditional. */
+  condition?: Record<string, unknown> | null;
+  created_at?: string;
+};
+
+/** Active right now (permanent or not yet expired). Expired rows stay in the
+ * table until revoked/purged but never authorize in check(). */
+export function isGrantActive(g: Grant, at = new Date()): boolean {
+  if (!g.expires_at) return true;
+  return new Date(g.expires_at).getTime() > at.getTime();
+}
 export type MemberRole = {
   id: string;
   profile_id: string;
@@ -38,6 +54,7 @@ export type Subject = {
   id: string;
   external_id: string;
   display_name: string | null;
+  attrs?: Record<string, unknown> | null;
   created_at: string;
 };
 export type Profile = {

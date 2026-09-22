@@ -38,6 +38,14 @@ await keyring.grantRole({
   displayName: user.email,
 });
 
+// Temporary access — auto-expires, no revoke needed
+// (e.g. let this token create repos for the next 5 minutes):
+await keyring.grantRole({
+  role: "repo-creator",
+  subject: user.id,
+  ttlSeconds: 300,
+});
+
 const { allowed } = await keyring.check(user.id, "invoices.refund");
 
 // Manual telemetry event (checks auto-log; secret key needs telemetry.write):

@@ -42,6 +42,21 @@ export async function GET(req: Request) {
   if (!permission) {
     return withCors(badRequest("Expected ?permission=<slug>"));
   }
+  // ABAC request context: ?context={"plan":"pro"} (URL-encoded JSON).
+  // Merged with stored subject attrs inside Postgres; context wins.
+  let context: Record<string, unknown> = {};
+  const rawContext = url.searchParams.get("context");
+  if (rawContext) {
+    try {
+      const parsed = JSON.parse(rawContext);
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return withCors(badRequest("Invalid context (want JSON object)"));
+      }
+      context = parsed as Record<string, unknown>;
+    } catch {
+      return withCors(badRequest("Invalid context (want JSON object)"));
+    }
+  }
 
   let subject = "";
   if (meta.key_type === "publishable") {
@@ -73,6 +88,7 @@ export async function GET(req: Request) {
     _hash: await hashApiKey(raw),
     _subject: subject,
     _perm: permission,
+    _context: context as never,
   });
   if (error) return withCors(badRequest(error.message));
   if (data === null) return withCors(unauthorized());

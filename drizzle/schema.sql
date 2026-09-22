@@ -120,9 +120,13 @@ CREATE TABLE public.grants (
   subject_id uuid NOT NULL REFERENCES public.subjects(id) ON DELETE CASCADE,
   organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz,
   UNIQUE (role_id, subject_id)
 );
 CREATE INDEX IF NOT EXISTS grants_organization_id_idx ON public.grants (organization_id);
+CREATE INDEX IF NOT EXISTS grants_expires_at_idx
+  ON public.grants (organization_id, expires_at)
+  WHERE expires_at IS NOT NULL;
 
 CREATE TABLE public.member_roles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -337,7 +341,7 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO public.subscription_plans (code, name, monthly_price_cents, is_active) VALUES
   ('free', 'Self-hosted', 0, true),
-  ('pro', 'Pro', 1900, true),
+  ('pro', 'Pro', 1200, true),
   ('enterprise', 'Enterprise', 0, true)
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name,
   monthly_price_cents = EXCLUDED.monthly_price_cents, is_active = true;
@@ -415,12 +419,14 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
   )
 $$;
 
+-- Expired grants (expires_at <= now()) never authorize. NULL = permanent.
 CREATE OR REPLACE FUNCTION public.has_role(_subject_id uuid, _slug text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.grants g
     JOIN public.roles r ON r.id = g.role_id
     WHERE g.subject_id = _subject_id AND r.slug = _slug
+      AND (g.expires_at IS NULL OR g.expires_at > now())
   )
 $$;
 
@@ -431,6 +437,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
     JOIN public.role_permissions rp ON rp.role_id = g.role_id
     JOIN public.permissions p ON p.id = rp.permission_id
     WHERE g.subject_id = _subject_id AND p.slug = _perm
+      AND (g.expires_at IS NULL OR g.expires_at > now())
   )
 $$;
 
@@ -452,6 +459,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
       AND p.organization_id = _organization_id
       AND r.scope = 'customer'
       AND s.external_id = _subject_id AND p.slug = _perm
+      AND (g.expires_at IS NULL OR g.expires_at > now())
   )
 $$;
 
@@ -840,13 +848,19 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.api_grant_role(_hash text, _role text, _subject text, _display_name text DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.api_grant_role(
+  _hash text, _role text, _subject text,
+  _display_name text DEFAULT NULL,
+  _expires_at timestamptz DEFAULT NULL,
+  _ttl_seconds int DEFAULT NULL
+)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   _key uuid;
   _org uuid;
   _rid uuid;
   _sid uuid;
+  _exp timestamptz;
   _n int;
 BEGIN
   SELECT public._api_key_id(_hash) INTO _key;
@@ -857,10 +871,30 @@ BEGIN
   SELECT id INTO _rid FROM public.roles
   WHERE slug = _role AND scope = 'customer' AND organization_id = _org;
   IF _rid IS NULL THEN RAISE EXCEPTION 'unknown_role:%', _role; END IF;
+
+  IF _ttl_seconds IS NOT NULL THEN
+    IF _ttl_seconds < 30 OR _ttl_seconds > 31536000 THEN
+      RAISE EXCEPTION 'invalid_ttl_seconds:% (want 30..31536000)', _ttl_seconds;
+    END IF;
+    _exp := now() + (_ttl_seconds || ' seconds')::interval;
+  ELSIF _expires_at IS NOT NULL THEN
+    IF _expires_at <= now() THEN
+      RAISE EXCEPTION 'expires_at_must_be_future';
+    END IF;
+    IF _expires_at > now() + interval '366 days' THEN
+      RAISE EXCEPTION 'expires_at_too_far (max 1 year)';
+    END IF;
+    _exp := _expires_at;
+  ELSE
+    _exp := NULL;
+  END IF;
+
   SELECT public.ensure_subject(_org, _subject, _display_name) INTO _sid;
-  INSERT INTO public.grants (organization_id, role_id, subject_id)
-  VALUES (_org, _rid, _sid)
-  ON CONFLICT (role_id, subject_id) DO NOTHING;
+  INSERT INTO public.grants (organization_id, role_id, subject_id, expires_at)
+  VALUES (_org, _rid, _sid, _exp)
+  ON CONFLICT (role_id, subject_id) DO UPDATE
+    SET expires_at = EXCLUDED.expires_at
+    WHERE public.grants.expires_at IS DISTINCT FROM EXCLUDED.expires_at;
   GET DIAGNOSTICS _n = ROW_COUNT;
   RETURN _n > 0;
 END;
@@ -1281,6 +1315,14 @@ CREATE POLICY "org delete grants" ON public.grants FOR DELETE TO authenticated
   USING (
     organization_id = public.my_organization_id()
     AND public.has_console_permission(auth.uid(), 'users.manage')
+  );
+CREATE POLICY "org update grants" ON public.grants FOR UPDATE TO authenticated
+  USING (
+    organization_id = public.my_organization_id()
+    AND public.has_console_permission(auth.uid(), 'users.manage')
+  )
+  WITH CHECK (
+    organization_id = public.my_organization_id()
   );
 
 -- member_roles (grant rows carry their workspace; members see their own)

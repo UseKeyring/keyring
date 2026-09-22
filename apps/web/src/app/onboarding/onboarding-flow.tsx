@@ -254,7 +254,7 @@ export function OnboardingFlow() {
               <div className="flex w-full flex-col gap-4 rounded-2xl border border-hairline bg-pillar p-6">
                 <div>
                   <div className="type-body-sm text-ink">
-                    Creating a workspace requires Pro — $19 per project / month
+                    Creating a workspace requires Pro — $12 per project / month
                   </div>
                   <p className="type-body-sm mt-1 text-ink-muted">
                     Self-hosting stays free forever. On this hosted console, an active Pro or

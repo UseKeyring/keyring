@@ -446,6 +446,7 @@ export type Database = {
       }
       subjects: {
         Row: {
+          attrs: Json
           created_at: string
           display_name: string | null
           external_id: string
@@ -453,6 +454,7 @@ export type Database = {
           organization_id: string
         }
         Insert: {
+          attrs?: Json
           created_at?: string
           display_name?: string | null
           external_id: string
@@ -460,6 +462,7 @@ export type Database = {
           organization_id: string
         }
         Update: {
+          attrs?: Json
           created_at?: string
           display_name?: string | null
           external_id?: string
@@ -470,25 +473,31 @@ export type Database = {
       }
       grants: {
         Row: {
+          condition: Json
           created_at: string
           id: string
           organization_id: string
           role_id: string
           subject_id: string
+          expires_at: string | null
         }
         Insert: {
+          condition?: Json
           created_at?: string
           id?: string
           organization_id: string
           role_id: string
           subject_id: string
+          expires_at?: string | null
         }
         Update: {
+          condition?: Json
           created_at?: string
           id?: string
           organization_id?: string
           role_id?: string
           subject_id?: string
+          expires_at?: string | null
         }
         Relationships: [
           {
@@ -720,7 +729,14 @@ export type Database = {
       my_organization_id: { Args: Record<string, never>; Returns: string }
       api_key_meta: { Args: { _hash: string }; Returns: Json }
       api_whoami: { Args: { _hash: string }; Returns: Json }
-      api_check: { Args: { _hash: string; _subject: string; _perm: string }; Returns: boolean }
+      api_check: {
+        Args: { _hash: string; _subject: string; _perm: string; _context?: Json }
+        Returns: boolean
+      }
+      api_set_subject_attrs: {
+        Args: { _hash: string; _subject: string; _attrs: Json; _display_name?: string | null }
+        Returns: boolean
+      }
       api_track_event: {
         Args: {
           _hash: string
@@ -732,7 +748,19 @@ export type Database = {
         Returns: string
       }
       purge_check_events: { Args: { _org: string; _days?: number }; Returns: number }
-      api_grant_role: { Args: { _hash: string; _role: string; _subject: string; _display_name?: string | null }; Returns: boolean }
+      api_grant_role: {
+        Args: {
+          _hash: string
+          _role: string
+          _subject: string
+          _display_name?: string | null
+          _expires_at?: string | null
+          _ttl_seconds?: number | null
+          _condition?: Json | null
+        }
+        Returns: boolean
+      }
+      purge_expired_grants: { Args: { _hash?: string | null }; Returns: number }
       api_revoke_grant: { Args: { _hash: string; _role: string; _subject: string }; Returns: boolean }
       api_list_roles: { Args: { _hash: string }; Returns: Json }
       api_list_permissions: { Args: { _hash: string }; Returns: Json }

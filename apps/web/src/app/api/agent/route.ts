@@ -195,8 +195,26 @@ function agentAttributionHeaders(): Record<string, string> {
   };
 }
 
-function extractJson(text: string): Record<string, unknown> | null {
+/** One-line provider failure for user-facing errors: "Gemini 400: msg". */
+async function providerErrorSummary(res: Response): Promise<string> {
   try {
+    const text = await res.text();
+    try {
+      const body = JSON.parse(text) as {
+        error?: { message?: string } | string;
+      };
+      const msg =
+        typeof body.error === "string" ? body.error : (body.error?.message ?? text);
+      return `${res.status}: ${msg}`.slice(0, 200);
+    } catch {
+      return `${res.status}: ${text}`.slice(0, 200);
+    }
+  } catch {
+    return `${res.status}`;
+  }
+}
+
+function extractJson(text: string): Record<string, unknown> | null {  try {
     const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
     return JSON.parse((fenced?.[1] ?? text).trim()) as Record<string, unknown>;
   } catch {
@@ -262,6 +280,9 @@ async function aiAnalyzeIntent(
     // Pi-style attribution only applies to Zen; other providers get a plain call.
     const extraHeaders = isZen ? agentAttributionHeaders() : {};
     let content: string | undefined;
+    // First error is the diagnostic one (e.g. region block on the configured
+    // model); later chain entries just add noise.
+    let firstProviderError = "";
     for (const model of models) {
       try {
         const res = await fetch(`${base}/v1/chat/completions`, {
@@ -279,10 +300,17 @@ async function aiAnalyzeIntent(
           return {
             action: "ai_unavailable",
             data: {},
-            response: "Gemini is throttling me right now — wait a minute and try again.",
+            response: "The AI provider is throttling me right now — wait a minute and try again.",
           };
         }
-        if (!res.ok) continue;
+        if (!res.ok) {
+          // 400s are request/account-level (region block, bad key) — no other
+          // model will succeed, so stop. 404 = unknown model, try the next.
+          const summary = await providerErrorSummary(res);
+          if (!firstProviderError) firstProviderError = summary;
+          if (res.status === 400) break;
+          continue;
+        }
         const body = (await res.json()) as {
           choices?: { message?: { content?: string } }[];
         };
@@ -296,7 +324,9 @@ async function aiAnalyzeIntent(
       return {
         action: "ai_unavailable",
         data: {},
-        response: "The AI didn't answer — try again in a moment.",
+        response: firstProviderError
+          ? `The AI provider failed: ${firstProviderError}`
+          : "The AI didn't answer — try again in a moment.",
       };
     }
 
