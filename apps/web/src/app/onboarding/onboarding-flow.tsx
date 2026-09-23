@@ -159,7 +159,7 @@ export function OnboardingFlow() {
         {/* Plain <img>: the Next optimizer has no Workers runtime, and this
             is a static asset — identical rendering via absolute fill. */}
         <img
-          src="/onboarding-0.png"
+          src="/onboarding-0.jpg"
           alt=""
           fetchPriority="high"
           loading="eager"

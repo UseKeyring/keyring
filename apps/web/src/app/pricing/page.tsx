@@ -31,7 +31,7 @@ const TIERS = [
     period: "free forever",
     blurb: "Run Keyring on your own infra. Same console, your bill is zero.",
     cta: "Deploy yourself",
-    href: "https://github.com/flaxodev/access-controller-hub",
+    href: "https://github.com/UseKeyring/keyring",
     featured: false,
     features: [
       "Full console — actions, roles, grants",
