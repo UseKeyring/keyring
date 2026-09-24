@@ -15,7 +15,7 @@ const log = (step: string, data?: unknown) => {
 };
 
 const mapPolarStatus = (status: string): "active" | "past_due" | "canceled" | null => {
-  if (status === "active" || status === "trialing") return "active";
+  if (status === "active") return "active";
   if (status === "past_due" || status === "unpaid" || status === "incomplete" || status === "incomplete_expired") return "past_due";
   if (status === "canceled" || status === "cancelled" || status === "expired") return "canceled";
   // Unknown / future Polar statuses: fail open (ack without sync) so we

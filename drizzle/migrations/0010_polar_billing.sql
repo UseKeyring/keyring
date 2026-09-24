@@ -18,7 +18,7 @@
 --      subscribers can manage/cancel (settings → Billing).
 --
 -- Polar dashboard setup (do once):
---   - Create the Pro subscription product ($19/mo, 14-day trial optional).
+--   - Create the Pro subscription product ($19/mo).
 --   - Webhook endpoint: https://<project>.supabase.co/functions/v1/polar-webhook
 --     subscribed to subscription.*, checkout.*, order.*, customer.*.
 --   - Copy the webhook secret → POLAR_WEBHOOK_SECRET.

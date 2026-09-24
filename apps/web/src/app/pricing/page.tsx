@@ -46,7 +46,7 @@ const TIERS = [
     price: "$12",
     period: "per project / month",
     blurb: "Hosted Keyring for products with real users.",
-    cta: "Start 14-day trial",
+    cta: "Subscribe to Pro",
     href: "/auth",
     featured: true,
     features: [
