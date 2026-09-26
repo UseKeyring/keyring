@@ -1,0 +1,44 @@
+---
+title: API reference
+description: Raw Management API (/api/v1) — auth, scopes, and endpoints behind the SDK.
+---
+
+All routes take `Authorization: Bearer <key>` (`kr_sk_live_…` / `kr_pk_live_…` / legacy `kr_live_…`). Key metadata (workspace, type, scopes, expiry) is resolved per request; bad/revoked/expired → `401`. Missing scope → `403`.
+
+Built-in scopes: `check`, `grants.write`, `roles.read`, `actions.read`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Publishable keys are capped to `check`.
+
+## GET /api/v1/check
+
+```http
+GET /api/v1/check?subject=user_123&permission=invoices.refund&context=%7B%22plan%22%3A%22pro%22%7D
+Authorization: Bearer kr_sk_live_…
+```
+
+- Secret key: `?subject=` + `?permission=` (+ optional `?context=` URL-encoded JSON object).
+- Publishable key: `?permission=` only, plus `X-Keyring-Subject-Token: <jwt>`; any `?subject=` is ignored and the subject comes from the verified JWT. `?context=` still rides along.
+- CORS: `Access-Control-Allow-Origin: *`, allowed headers `Authorization, Content-Type, X-Keyring-Subject-Token`.
+- Response: `{ "subject": "user_123", "permission": "invoices.refund", "allowed": true }`.
+
+## POST /api/v1/grants · DELETE /api/v1/grants
+
+Secret, scope `grants.write`. Grant a role (supports `display_name`, `expires_at` / `ttl_seconds`, ABAC `condition`); revoke with `{ role, subject }`.
+
+## POST /api/v1/subjects
+
+Secret, scope `grants.write`. Upsert subject attributes (merged) — feeds ABAC grant conditions. Body: `{ subject, attrs, display_name? }`.
+
+## POST /api/v1/subject-tokens
+
+Secret, scope `subject_tokens.write`. Mint a browser JWT. Body: `{ subject, ttl_seconds? }` → `{ token, subject, expires_at }`.
+
+## GET /api/v1/roles · GET /api/v1/permissions
+
+Secret. `roles.read` → `{ roles: [{ slug, name, description, created_at }] }`; `actions.read` → `{ permissions: [...] }` (SDK alias `listActions()`).
+
+## POST /api/v1/events
+
+Secret, scope `telemetry.write`. Manual telemetry event paired with auto-logged checks. Body: `{ subject, permission, allowed?, context? }` → `{ ok: true, id }`.
+
+## Errors
+
+`{ "error": "…" }` with `400` (bad input, e.g. missing `permission`/`subject`, invalid `context`), `401` (bad key / bad subject token), `403` (missing scope), `404`, `500` (API not configured).

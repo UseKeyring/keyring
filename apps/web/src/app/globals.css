@@ -1,1 +1,51 @@
 @import "@keyring/ui/globals.css";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+/* Tailwind content detection skips gitignored node_modules, so register
+   Fumadocs component classes explicitly (its own @source doesn't survive
+   bun's isolated-store symlinks). */
+@source "../../node_modules/fumadocs-ui/dist/**/*.js";
+
+/*
+ * Fumadocs theme tokens mapped onto the Polar design system (same tokens
+ * as packages/ui/src/styles/globals.css): white canvas, ink-navy text,
+ * pillar cards, hairline borders, ink-black accents. No shadows.
+ */
+:root {
+  --color-fd-background: var(--canvas);
+  --color-fd-foreground: var(--ink-navy);
+  --color-fd-muted: var(--pillar);
+  --color-fd-muted-foreground: var(--ink-muted);
+  --color-fd-popover: var(--canvas);
+  --color-fd-popover-foreground: var(--ink-navy);
+  --color-fd-card: var(--pillar);
+  --color-fd-card-foreground: var(--ink-navy);
+  --color-fd-border: var(--hairline);
+  --color-fd-primary: var(--ink);
+  --color-fd-primary-foreground: var(--canvas);
+  --color-fd-secondary: var(--pillar);
+  --color-fd-secondary-foreground: var(--ink);
+  --color-fd-accent: var(--surface-1);
+  --color-fd-accent-foreground: var(--ink-navy);
+  --color-fd-ring: var(--ink);
+}
+
+.dark {
+  --color-fd-background: var(--canvas);
+  --color-fd-foreground: var(--ink-navy);
+  --color-fd-muted: var(--pillar);
+  --color-fd-muted-foreground: var(--ink-muted);
+  --color-fd-popover: var(--pillar);
+  --color-fd-popover-foreground: var(--ink-navy);
+  --color-fd-card: var(--pillar);
+  --color-fd-card-foreground: var(--ink-navy);
+  --color-fd-border: var(--hairline);
+  --color-fd-primary: var(--ink);
+  --color-fd-primary-foreground: var(--canvas);
+  --color-fd-secondary: var(--surface-1);
+  --color-fd-secondary-foreground: var(--ink-navy);
+  --color-fd-accent: var(--surface-1);
+  --color-fd-accent-foreground: var(--ink-navy);
+  --color-fd-ring: var(--ink-subtle);
+}

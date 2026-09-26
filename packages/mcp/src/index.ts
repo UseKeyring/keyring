@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { Keyring, detectKeyKind } from "@keyring/sdk";
+import { Keyring, detectKeyKind } from "@usekeyring/sdk";
 import { createServer } from "./server.js";
 
 export function requiredEnv(name: string): string {

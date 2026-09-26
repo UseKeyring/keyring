@@ -1,0 +1,110 @@
+---
+title: Quickstart
+description: Connect your app to Keyring with the TypeScript SDK in minutes.
+---
+
+import { Tabs, Tab } from "fumadocs-ui/components/tabs";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+## What you need
+
+- A Keyring workspace with at least one **role** and one **action** defined in the console.
+- Your Keyring app origin as `baseUrl` (e.g. `https://app.example.com`).
+- Two API keys from **Settings → API keys**: a **secret** key for the server, a **publishable** key for the browser.
+- Your own auth provider (Clerk / Supabase / WorkOS / …) — Keyring does not log your users in, it authorizes them.
+
+<Steps>
+<Step>
+### Install
+
+<Tabs items={["bun", "npm", "pnpm"]}>
+<Tab value="bun">
+```bash
+bun add @usekeyring/sdk
+```
+</Tab>
+<Tab value="npm">
+```bash
+npm i @usekeyring/sdk
+```
+</Tab>
+<Tab value="pnpm">
+```bash
+pnpm add @usekeyring/sdk
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Server: grant + check
+
+```ts
+import { Keyring } from "@usekeyring/sdk";
+
+const keyring = new Keyring({
+  apiKey: process.env.KEYRING_SECRET_KEY!, // kr_sk_live_…
+  baseUrl: process.env.KEYRING_URL!, // your Keyring origin
+});
+
+// Give the user a role (your IDs, your display names)
+await keyring.grantRole({
+  role: "viewer",
+  subject: user.id,
+  displayName: user.email,
+});
+
+// Temporary access — auto-expires, no revoke needed
+await keyring.grantRole({
+  role: "repo-creator",
+  subject: user.id,
+  ttlSeconds: 300,
+});
+
+// Enforce
+const { allowed } = await keyring.check(user.id, "invoices.refund");
+if (!allowed) throw new Error("Forbidden");
+```
+
+The secret key needs the `check` scope to check, `grants.write` to grant/revoke, and `subject_tokens.write` to mint browser tokens.
+</Step>
+
+<Step>
+### Browser: UX-only check
+
+After your own login, mint a subject token on your backend and hand it to the browser (prefer an httpOnly cookie):
+
+```ts
+// server — after your login
+const { token, expiresAt } = await keyring.createSubjectToken({
+  subject: user.id,
+  ttlSeconds: 3600,
+});
+```
+
+```ts
+// browser — show/hide UI only
+import { Keyring } from "@usekeyring/sdk";
+
+const keyring = new Keyring({
+  apiKey: process.env.NEXT_PUBLIC_KEYRING_PUBLISHABLE_KEY!, // kr_pk_live_…
+  baseUrl: process.env.NEXT_PUBLIC_KEYRING_URL!,
+  subjectToken: () => readCookie("keyring_subject"),
+});
+
+const { allowed } = await keyring.check("invoices.refund");
+```
+
+Or pass the token per call: `keyring.check("invoices.refund", { subjectToken })`. The subject comes from the JWT — the client cannot forge another subject id.
+
+<Callout title="Enforce on the server">
+  Browser checks never grant access. Re-check with the secret key before any read/write.
+</Callout>
+</Step>
+</Steps>
+
+## Next steps
+
+- [TypeScript SDK](/docs/typescript-sdk) — full method reference, ABAC, telemetry.
+- [API reference](/docs/api-reference) — raw `GET /api/v1/check` and the other endpoints.

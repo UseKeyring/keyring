@@ -5,7 +5,7 @@ questions, explore roles and actions, grant/revoke roles, and mint subject
 tokens. stdio transport — works with Claude Desktop, Cursor, VS Code and
 opencode.
 
-It wraps [`@keyring/sdk`](../sdk) and talks to the Keyring Management API
+It wraps [`@usekeyring/sdk`](../sdk) and talks to the Keyring Management API
 (`/api/v1`), so the agent gets exactly the permissions its API key carries.
 
 ## Requirements

@@ -164,10 +164,10 @@ Server routes run over the Supabase publishable key; every operation validates
 the issued key inside a `SECURITY DEFINER` function. Subject-token JWTs are
 signed with `SUBJECT_TOKEN_SECRET` on the Keyring app (see `.env.example`).
 
-### TypeScript SDK (`@keyring/sdk`)
+### TypeScript SDK (`@usekeyring/sdk`)
 
 ```ts
-import { Keyring } from "@keyring/sdk";
+import { Keyring } from "@usekeyring/sdk";
 
 // Server
 const keyring = new Keyring({

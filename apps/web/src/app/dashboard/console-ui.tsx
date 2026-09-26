@@ -390,7 +390,7 @@ export function OverviewSetupSteps({
     `- API keys issued: ${keysCount}`,
     ``,
     `## MANAGEMENT API ENDPOINTS`,
-    `- Prefer @keyring/sdk. Secret key kr_sk_… (server): grant/revoke/list/check + mint subject tokens. Publishable key kr_pk_… (browser): check only with X-Keyring-Subject-Token.`,
+    `- Prefer @usekeyring/sdk. Secret key kr_sk_… (server): grant/revoke/list/check + mint subject tokens. Publishable key kr_pk_… (browser): check only with X-Keyring-Subject-Token.`,
     `- Base URL: /api/v1 (Authorization: Bearer <KEY>)`,
     `- Check (secret): GET /api/v1/check?subject=<USER_ID>&permission=<ACTION_SLUG>`,
     `- Check (publishable): GET /api/v1/check?permission=<ACTION_SLUG> + X-Keyring-Subject-Token`,
@@ -409,7 +409,7 @@ export function OverviewSetupSteps({
     existingRoles.length > 0
       ? `- I already have these roles defined: ${existingRoles.join(", ")}. Adjust role-action mappings if needed.`
       : `- Create customer roles (e.g., "admin", "editor", "viewer") grouping those permission actions.`,
-    `- Implement backend middleware with a secret key that includes the check scope (or @keyring/sdk) calling /api/v1/check. Key scopes (check, grants.write, roles.read, actions.read, subject_tokens.write) gate each endpoint. Publishable keys are check-only with subject tokens.`,
+    `- Implement backend middleware with a secret key that includes the check scope (or @usekeyring/sdk) calling /api/v1/check. Key scopes (check, grants.write, roles.read, actions.read, subject_tokens.write) gate each endpoint. Publishable keys are check-only with subject tokens.`,
   ].join("\n");
 
   const copyPrompt = () => {

@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Keyring, KeyringError } from "@keyring/sdk";
+import { Keyring, KeyringError } from "@usekeyring/sdk";
 import { z } from "zod";
 
 export const SubjectSchema = z

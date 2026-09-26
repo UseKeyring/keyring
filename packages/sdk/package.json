@@ -1,10 +1,9 @@
 {
-  "name": "@keyring/sdk",
+  "name": "@usekeyring/sdk",
   "version": "0.1.0",
   "description": "TypeScript client for the Keyring Management API (server + browser)",
   "type": "module",
   "license": "MIT",
-  "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

@@ -1,0 +1,97 @@
+---
+title: TypeScript SDK
+description: Full reference for @usekeyring/sdk — server + browser, ABAC, subject tokens, telemetry.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+`@usekeyring/sdk` lives in `packages/sdk` and talks to `/api/v1` with `Authorization: Bearer <key>`. Works on the server (secret key) and in the browser (publishable key + subject token).
+
+## Construction
+
+```ts
+import { Keyring } from "@usekeyring/sdk";
+
+const keyring = new Keyring({
+  apiKey: process.env.KEYRING_SECRET_KEY!, // kr_sk_… / kr_live_… or kr_pk_…
+  baseUrl: process.env.KEYRING_URL!, // e.g. https://app.example.com
+  subjectToken: () => readCookie("keyring_subject"), // browser only
+  fetch: customFetch, // optional
+  headers: { "X-Custom": "1" }, // optional extra headers
+});
+```
+
+Key kind is detected from the prefix: `kr_pk_…` → publishable, anything else → secret. Publishable keys calling a secret-only method throw locally (`Publishable keys cannot …`).
+
+## Checks
+
+```ts
+// Server (secret): pass the raw subject
+await keyring.check("user_123", "invoices.refund");
+await keyring.check("user_123", "invoices.refund", { context: { plan: "pro" } });
+
+// Browser (publishable): subject comes from the JWT
+await keyring.check("invoices.refund");
+await keyring.check("invoices.refund", { subjectToken, context: { plan: "pro" } });
+
+// Throw on deny
+await keyring.assert("user_123", "invoices.refund"); // throws ForbiddenError
+```
+
+Result: `{ subject, permission, allowed }`. `context` is ABAC request context merged with stored subject attrs inside Postgres — context wins.
+
+## Subject tokens
+
+1. User signs in with **your** auth provider.
+2. Backend mints with the secret key (needs `subject_tokens.write`).
+3. Return the JWT to the browser (httpOnly cookie preferred).
+4. Frontend sends it as `X-Keyring-Subject-Token` — the SDK does this for you.
+
+```ts
+const { token, subject, expiresAt } = await keyring.createSubjectToken({
+  subject: user.id,
+  ttlSeconds: 3600,
+});
+```
+
+## Grants, roles, attributes
+
+```ts
+await keyring.grantRole({ role: "viewer", subject: user.id, displayName: user.email });
+await keyring.grantRole({ role: "repo-creator", subject: user.id, ttlSeconds: 300 });
+await keyring.grantRole({ role: "beta", subject: user.id, expiresAt: new Date("2026-06-01") });
+await keyring.grantRole({ role: "pro", subject: user.id, condition: { attr: "plan", in: ["pro", "enterprise"] } });
+
+await keyring.setSubjectAttrs({ subject: user.id, attrs: { plan: "pro", region: "eu" } });
+
+await keyring.revokeRole({ role: "viewer", subject: user.id });
+await keyring.replaceRole({ subject: user.id, from: "trial", to: "pro" });
+
+const roles = await keyring.listRoles(); // needs roles.read
+const actions = await keyring.listPermissions(); // needs actions.read (alias: listActions())
+```
+
+Scopes: `grants.write` for grant/revoke/replace + `setSubjectAttrs`, `roles.read` / `actions.read` for listings. `ttlSeconds` wins when both expiry forms are given; omitted = permanent.
+
+ABAC conditions compose: `{ all: [...] }`, `{ any: [...] }`, `{ not: {...} }`.
+
+## Telemetry
+
+`check()` rows auto-log. For manual events (secret key needs `telemetry.write`):
+
+```ts
+await keyring.track(user.id, "invoices.refund", {
+  allowed: true, // omit to resolve against the RBAC graph at track time
+  context: { source: "refund-dialog" },
+});
+```
+
+## Errors
+
+Typed errors, all extending `KeyringError` (`status`, `body`):
+
+`UnauthorizedError` (401) · `ForbiddenError` (403, incl. `assert()` denials) · `BadRequestError` (400) · `NotFoundError` (404) · `ApiError` (everything else).
+
+<Callout title="Key hygiene">
+  Secret keys stay in server env. Never ship `kr_sk_…` to the browser — use `kr_pk_…` there.
+</Callout>

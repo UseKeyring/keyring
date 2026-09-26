@@ -1,0 +1,35 @@
+---
+title: Introduction
+description: Keyring is access-control infrastructure — actions, roles, grants, and one-call checks.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Keyring is access-control infrastructure for your product. You define **actions** (`invoices.refund`, `members.invite`), compose them into **roles**, grant roles to your product's users (**subjects**), and answer any access question in one call.
+
+## The model
+
+- **Actions** — atomic things a user can do. You define the slugs.
+- **Roles** — named bundles of actions (`support`, `finance`).
+- **Grants** — a subject holds roles. Access is the union of everything they hold.
+- **Checks** — `GET /api/v1/check?subject=…&permission=…` returns `{ allowed: true | false }`, decided in the database.
+
+Console accounts (your team) never enter the graph. Subjects connect by your own IDs (`user_123`, Clerk/Supabase/WorkOS IDs).
+
+## Ways to integrate
+
+1. **TypeScript SDK** (`@usekeyring/sdk`) — start here. See [Quickstart](/docs/quickstart) and [TypeScript SDK](/docs/typescript-sdk).
+2. **REST directly** — `Authorization: Bearer <key>` against `/api/v1/*`. See [API reference](/docs/api-reference).
+
+## Keys
+
+| Kind | Prefix | Where | Can do |
+| ---- | ------ | ----- | ------ |
+| Secret | `kr_sk_live_…` (legacy `kr_live_…`) | Server env only | Any selected scopes |
+| Publishable | `kr_pk_live_…` | Frontend (`NEXT_PUBLIC_…`) | `check` only, with a subject token |
+
+Scopes are picked at key creation (Settings → API keys): `check`, `grants.write`, `roles.read`, `actions.read`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Publishable keys are capped to `check`. Missing scope → `403`.
+
+<Callout title="Enforce on the server">
+  Browser `check()` is for UX (show/hide UI). Always enforce with a secret key on your server.
+</Callout>

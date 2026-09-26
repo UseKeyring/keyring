@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Keyring } from "@keyring/sdk";
+import type { Keyring } from "@usekeyring/sdk";
 import { registerTools } from "./tools.js";
 
 export const SERVER_VERSION = "0.1.0";

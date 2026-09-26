@@ -10,6 +10,8 @@
     "noUncheckedSideEffectImports": true,
     "incremental": true,
     "tsBuildInfoFile": ".cache/typecheck.tsbuildinfo",
+    "declaration": false,
+    "declarationMap": false,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
@@ -18,5 +20,5 @@
     "target": "ES2022"
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.ts"],
-  "exclude": ["node_modules", "../../drizzle", "../../supabase/functions"]
+  "exclude": ["node_modules", ".source", "../../drizzle", "../../supabase/functions"]
 }

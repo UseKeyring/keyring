@@ -1,12 +1,12 @@
-# `@keyring/sdk`
+# `@usekeyring/sdk`
 
 TypeScript client for the Keyring Management API. Works on the **server** (secret key) and in the **browser** (publishable key + subject token).
 
 ## Install
 
 ```sh
-bun add @keyring/sdk
-# or: npm i @keyring/sdk
+bun add @usekeyring/sdk
+# or: npm i @usekeyring/sdk
 ```
 
 ## Keys
@@ -25,7 +25,7 @@ Browser checks are for **UX** (show/hide UI). Enforce access on your server with
 ## Server
 
 ```ts
-import { Keyring } from "@keyring/sdk";
+import { Keyring } from "@usekeyring/sdk";
 
 const keyring = new Keyring({
   apiKey: process.env.KEYRING_SECRET_KEY!,
@@ -63,7 +63,7 @@ const { token, expiresAt } = await keyring.createSubjectToken({
 ## Browser
 
 ```ts
-import { Keyring } from "@keyring/sdk";
+import { Keyring } from "@usekeyring/sdk";
 
 const keyring = new Keyring({
   apiKey: process.env.NEXT_PUBLIC_KEYRING_PUBLISHABLE_KEY!,

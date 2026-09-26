@@ -1,6 +1,9 @@
+import { createMDX } from "fumadocs-mdx/next";
 import type { NextConfig } from "next";
 
 import path from "node:path";
+
+const withMDX = createMDX();
 
 const nextConfig: NextConfig = {
   // Off: workspace URLs are dynamic (/dashboard/[orgSlug]/…), which static
@@ -12,4 +15,4 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@keyring/ui"],
 };
 
-export default nextConfig;
+export default withMDX(nextConfig);

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { Keyring } from "@keyring/sdk";
+import { Keyring } from "@usekeyring/sdk";
 import { createServer } from "./server.js";
 
 function jsonResponse(payload: unknown, status = 200): Response {
