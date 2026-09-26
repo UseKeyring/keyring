@@ -190,7 +190,38 @@ const browser = new Keyring({
 await browser.check("invoices.refund");
 ```
 
-Package lives at `packages/sdk`. See `packages/sdk/README.md`.
+```ts
+// Revoke, swap roles, and list
+await keyring.revokeRole({ role: "viewer", subject: newUser.id });
+await keyring.replaceRole({ subject: newUser.id, from: "viewer", to: "editor" });
+const roles = await keyring.listRoles();
+const actions = await keyring.listActions(); // alias for listPermissions()
+
+// Throw on deny (same overloads as check)
+await keyring.assert(newUser.id, "invoices.refund");
+
+// ABAC: gate a grant on subject attrs, pass request context on check
+await keyring.grantRole({
+  role: "pro-exporter",
+  subject: newUser.id,
+  condition: { attr: "plan", in: ["pro", "enterprise"] },
+});
+await keyring.setSubjectAttrs({ subject: newUser.id, attrs: { plan: "pro" } });
+await keyring.check(newUser.id, "exports.run", { context: { plan: "pro" } });
+
+// Manual telemetry (checks auto-log; secret key needs telemetry.write)
+await keyring.track(newUser.id, "invoices.refund", {
+  context: { source: "refund-dialog" },
+});
+```
+
+Typed errors: `UnauthorizedError`, `ForbiddenError` (also thrown by
+`assert()` on deny), `BadRequestError`, `NotFoundError`, `ApiError` — all
+extend `KeyringError` (`status`, `body`).
+
+Package lives at `packages/sdk`. Full method table, ABAC conditions, and
+constructor options (`subjectToken` string/getter, `fetch` override, extra
+headers) in `packages/sdk/README.md`.
 
 ### curl
 
