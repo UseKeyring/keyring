@@ -183,7 +183,8 @@ CREATE TABLE public.api_keys (
   prefix text NOT NULL,
   key_type text NOT NULL DEFAULT 'secret'
     CHECK (key_type IN ('secret', 'publishable')),
-  -- Built-in Management API scopes (check, grants.write, roles.read, …)
+  -- Built-in Management API scopes (check, grants.write, roles.read, roles.write,
+  -- actions.read, actions.write, subject_tokens.write, telemetry.read, telemetry.write)
   scopes text[] NOT NULL DEFAULT '{}',
   organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -961,6 +962,133 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.api_create_permission(
+  _hash text, _slug text, _name text,
+  _category text DEFAULT NULL, _description text DEFAULT NULL
+)
+RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  _key uuid;
+  _org uuid;
+  _row record;
+BEGIN
+  SELECT public._api_key_id(_hash) INTO _key;
+  IF _key IS NULL THEN RETURN NULL; END IF;
+  IF NOT public.api_key_has_scope(_key, 'actions.write') THEN RETURN NULL; END IF;
+  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL THEN RETURN NULL; END IF;
+
+  IF _slug IS NULL OR btrim(_slug) = '' THEN
+    RAISE EXCEPTION 'invalid_slug:slug required';
+  END IF;
+  IF _slug <> lower(_slug) OR _slug !~ '^[a-z0-9]+[a-z0-9._-]*\.[a-z0-9._-]+$' THEN
+    RAISE EXCEPTION 'invalid_slug:%', _slug;
+  END IF;
+  IF _name IS NULL OR btrim(_name) = '' THEN
+    RAISE EXCEPTION 'invalid_name:name required';
+  END IF;
+
+  INSERT INTO public.permissions (slug, name, category, description, scope, organization_id)
+  VALUES (
+    btrim(_slug), btrim(_name),
+    COALESCE(NULLIF(btrim(COALESCE(_category, '')), ''), 'General'),
+    NULLIF(btrim(COALESCE(_description, '')), ''),
+    'customer', _org
+  )
+  -- Partial unique index permissions_slug_org_uniq carries
+  -- WHERE organization_id IS NOT NULL, so the predicate is required here.
+  ON CONFLICT (organization_id, slug) WHERE organization_id IS NOT NULL
+  DO UPDATE SET
+    name = EXCLUDED.name,
+    category = EXCLUDED.category,
+    description = EXCLUDED.description
+  RETURNING slug, name, description, category, created_at INTO _row;
+
+  RETURN json_build_object(
+    'slug', _row.slug, 'name', _row.name,
+    'description', _row.description, 'category', _row.category,
+    'created_at', _row.created_at
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.api_create_role(
+  _hash text, _slug text, _name text,
+  _description text DEFAULT NULL, _permissions text[] DEFAULT NULL
+)
+RETURNS json LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  _key uuid;
+  _org uuid;
+  _rid uuid;
+  _row record;
+  _slug_norm text;
+  _perm text;
+  _pid uuid;
+BEGIN
+  SELECT public._api_key_id(_hash) INTO _key;
+  IF _key IS NULL THEN RETURN NULL; END IF;
+  IF NOT public.api_key_has_scope(_key, 'roles.write') THEN RETURN NULL; END IF;
+  SELECT organization_id INTO _org FROM public.api_keys WHERE id = _key;
+  IF _org IS NULL THEN RETURN NULL; END IF;
+
+  IF _slug IS NULL OR btrim(_slug) = '' THEN
+    RAISE EXCEPTION 'invalid_slug:slug required';
+  END IF;
+  _slug_norm := lower(btrim(_slug));
+  IF _slug_norm !~ '^[a-z0-9]+(-[a-z0-9]+)*$' THEN
+    RAISE EXCEPTION 'invalid_slug:%', _slug;
+  END IF;
+  IF _name IS NULL OR btrim(_name) = '' THEN
+    RAISE EXCEPTION 'invalid_name:name required';
+  END IF;
+
+  IF _permissions IS NOT NULL AND cardinality(_permissions) > 0 THEN
+    FOREACH _perm IN ARRAY _permissions LOOP
+      IF _perm IS NULL OR btrim(_perm) = '' THEN
+        RAISE EXCEPTION 'unknown_permission:empty';
+      END IF;
+      SELECT id INTO _pid FROM public.permissions
+      WHERE slug = btrim(_perm) AND scope = 'customer' AND organization_id = _org;
+      IF _pid IS NULL THEN
+        RAISE EXCEPTION 'unknown_permission:%', btrim(_perm);
+      END IF;
+    END LOOP;
+  END IF;
+
+  INSERT INTO public.roles (slug, name, description, scope, organization_id)
+  VALUES (
+    _slug_norm, btrim(_name),
+    NULLIF(btrim(COALESCE(_description, '')), ''),
+    'customer', _org
+  )
+  -- Partial unique index roles_slug_org_uniq carries
+  -- WHERE organization_id IS NOT NULL, so the predicate is required here.
+  ON CONFLICT (organization_id, slug) WHERE organization_id IS NOT NULL
+  DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description
+  RETURNING id, slug, name, description, created_at INTO _row;
+  _rid := _row.id;
+
+  IF _permissions IS NOT NULL AND cardinality(_permissions) > 0 THEN
+    FOREACH _perm IN ARRAY _permissions LOOP
+      SELECT id INTO _pid FROM public.permissions
+      WHERE slug = btrim(_perm) AND scope = 'customer' AND organization_id = _org;
+      INSERT INTO public.role_permissions (role_id, permission_id, organization_id)
+      VALUES (_rid, _pid, _org)
+      ON CONFLICT (role_id, permission_id) DO NOTHING;
+    END LOOP;
+  END IF;
+
+  RETURN json_build_object(
+    'slug', _row.slug, 'name', _row.name,
+    'description', _row.description, 'created_at', _row.created_at
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.api_create_permission(text, text, text, text, text) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.api_create_role(text, text, text, text, text[]) TO anon, authenticated, service_role;
+
 CREATE OR REPLACE FUNCTION public.guard_api_key_scopes()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
 DECLARE
@@ -968,8 +1096,12 @@ DECLARE
     'check',
     'grants.write',
     'roles.read',
+    'roles.write',
     'actions.read',
-    'subject_tokens.write'
+    'actions.write',
+    'subject_tokens.write',
+    'telemetry.read',
+    'telemetry.write'
   ];
   _pub text[] := ARRAY['check'];
   _s text;

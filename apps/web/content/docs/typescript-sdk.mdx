@@ -14,7 +14,7 @@ import { Keyring } from "@usekeyring/sdk";
 
 const keyring = new Keyring({
   apiKey: process.env.KEYRING_SECRET_KEY!, // kr_sk_… / kr_live_… or kr_pk_…
-  baseUrl: process.env.KEYRING_URL!, // e.g. https://app.example.com
+  baseUrl: process.env.KEYRING_URL!, // e.g. https://usekeyring.dev
   subjectToken: () => readCookie("keyring_subject"), // browser only
   fetch: customFetch, // optional
   headers: { "X-Custom": "1" }, // optional extra headers
@@ -71,7 +71,7 @@ const roles = await keyring.listRoles(); // needs roles.read
 const actions = await keyring.listPermissions(); // needs actions.read (alias: listActions())
 ```
 
-Scopes: `grants.write` for grant/revoke/replace + `setSubjectAttrs`, `roles.read` / `actions.read` for listings. `ttlSeconds` wins when both expiry forms are given; omitted = permanent.
+Scopes: `grants.write` for grant/revoke/replace + `setSubjectAttrs`, `roles.read` / `actions.read` for listings, `roles.write` / `actions.write` for `createRole()` / `createPermission()` (create actions first — `createRole({ permissions })` links must already exist). `ttlSeconds` wins when both expiry forms are given; omitted = permanent.
 
 ABAC conditions compose: `{ all: [...] }`, `{ any: [...] }`, `{ not: {...} }`.
 

@@ -223,4 +223,60 @@ describe("Keyring SDK", () => {
     });
     expect(keyring.track("user_1", "x")).rejects.toThrow(/cannot track/);
   });
+
+  test("createRole posts to /api/v1/roles", async () => {
+    let captured: Captured | null = null;
+    const keyring = new Keyring({
+      apiKey: "kr_sk_live_test",
+      baseUrl: "https://keyring.example",
+      fetch: mockFetch((req) => {
+        captured = req;
+        return {
+          status: 201,
+          body: { slug: "player", name: "Player", description: null, created_at: "2026-01-01T00:00:00Z" },
+        };
+      }),
+    });
+    const role = await keyring.createRole({
+      slug: "player",
+      name: "Player",
+      permissions: ["games.play", "games.create"],
+    });
+    expect(role.slug).toBe("player");
+    expect(captured?.method).toBe("POST");
+    expect(captured?.url).toContain("/api/v1/roles");
+    expect(JSON.parse(captured?.body ?? "{}")).toMatchObject({
+      slug: "player",
+      permissions: ["games.play", "games.create"],
+    });
+  });
+
+  test("createPermission posts to /api/v1/permissions", async () => {
+    let captured: Captured | null = null;
+    const keyring = new Keyring({
+      apiKey: "kr_sk_live_test",
+      baseUrl: "https://keyring.example",
+      fetch: mockFetch((req) => {
+        captured = req;
+        return {
+          status: 201,
+          body: { slug: "games.play", name: "Play games", description: null, category: "Games", created_at: "2026-01-01T00:00:00Z" },
+        };
+      }),
+    });
+    const perm = await keyring.createPermission({ slug: "games.play", name: "Play games" });
+    expect(perm.slug).toBe("games.play");
+    expect(captured?.method).toBe("POST");
+    expect(captured?.url).toContain("/api/v1/permissions");
+  });
+
+  test("publishable key cannot create roles or actions", async () => {
+    const keyring = new Keyring({
+      apiKey: "kr_pk_live_test",
+      baseUrl: "https://keyring.example",
+      fetch: mockFetch(() => ({ status: 201, body: {} })),
+    });
+    expect(keyring.createRole({ slug: "player", name: "Player" })).rejects.toThrow(/cannot create/);
+    expect(keyring.createPermission({ slug: "games.play", name: "Play" })).rejects.toThrow(/cannot create/);
+  });
 });

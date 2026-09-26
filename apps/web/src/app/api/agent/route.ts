@@ -145,7 +145,7 @@ const AI_ACTIONS = new Set([
   "converse",
 ]);
 
-const AI_SYSTEM_PROMPT = `You parse admin requests for Keyring (an RBAC console with actions, roles, and end-users).
+const AI_SYSTEM_PROMPT = `You parse admin requests for Keyring (hosted at https://usekeyring.dev, docs at https://usekeyring.dev/docs — an RBAC console with actions, roles, and end-users).
 Reply with STRICT JSON only, no other text, no markdown fences:
 {"action": "<one of create_role|create_permission|create_subject|list_roles|list_permissions|clarify|converse>", "data": {...}, "response": "<one short chatty sentence for the user>"}
 Slots:

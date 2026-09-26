@@ -26,7 +26,7 @@
 -- Edge function secrets (supabase secrets set --project-ref <ref>):
 --   POLAR_ACCESS_TOKEN, POLAR_ENV=sandbox|production, POLAR_PRO_PRODUCT_ID,
 --   POLAR_WEBHOOK_SECRET, POLAR_WEBHOOK_TOLERANCE_SECONDS=300 (optional),
---   APP_URL=https://<your-app>
+--   APP_URL=https://usekeyring.dev (or your self-hosted origin)
 -- Deploy: supabase functions deploy polar-checkout polar-webhook polar-portal
 --   --project-ref <ref>   (sources live in supabase/functions/)
 --

@@ -14,7 +14,10 @@
     "binding": "ASSETS",
   },
   // Custom domain (zone already on Cloudflare — DNS + cert auto-provision).
-  "routes": [{ "pattern": "usekeyring.dev", "custom_domain": true }],
+  "routes": [
+    { "pattern": "usekeyring.dev", "custom_domain": true },
+    { "pattern": "www.usekeyring.dev", "custom_domain": true }
+  ],
   // Runtime vars for /api/agent (non-sensitive; the key itself is a secret).
   "vars": {
     "AGENT_AI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai",

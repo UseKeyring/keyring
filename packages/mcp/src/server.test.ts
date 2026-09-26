@@ -31,9 +31,15 @@ function route(url: URL, method: string, body: Record<string, unknown>, statusFo
     });
   }
   if (url.pathname === "/api/v1/roles") {
+    if (method === "POST") {
+      return jsonResponse({ slug: body["slug"], name: body["name"], description: null, created_at: "2026-01-01T00:00:00Z" }, 201);
+    }
     return jsonResponse({ roles: [{ slug: "support", name: "Support", description: null, created_at: "2026-01-01T00:00:00Z" }] });
   }
   if (url.pathname === "/api/v1/permissions") {
+    if (method === "POST") {
+      return jsonResponse({ slug: body["slug"], name: body["name"], description: null, category: "General", created_at: "2026-01-01T00:00:00Z" }, 201);
+    }
     return jsonResponse({ permissions: [{ slug: "invoices.refund", name: "Refund", description: null, category: "invoices", created_at: "2026-01-01T00:00:00Z" }] });
   }
   if (url.pathname === "/api/v1/grants" && method === "POST") {
@@ -63,11 +69,11 @@ function textOf(result: unknown): string {
 }
 
 describe("keyring-mcp", () => {
-  test("exposes all seven tools", async () => {
+  test("exposes all nine tools", async () => {
     const client = await connectedClient(apiMock());
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual(
-      ["check_access", "create_subject_token", "grant_role", "list_actions", "list_roles", "replace_role", "revoke_role"].sort(),
+      ["check_access", "create_action", "create_role", "create_subject_token", "grant_role", "list_actions", "list_roles", "replace_role", "revoke_role"].sort(),
     );
     await client.close();
   });
@@ -108,6 +114,22 @@ describe("keyring-mcp", () => {
 
     const token = await client.callTool({ name: "create_subject_token", arguments: { subject: "user_123" } });
     expect(JSON.parse(textOf(token))).toMatchObject({ token: "tok_test", subject: "user_123" });
+    await client.close();
+  });
+
+  test("create_role and create_action", async () => {
+    const client = await connectedClient(apiMock());
+    const role = await client.callTool({
+      name: "create_role",
+      arguments: { slug: "player", name: "Player", permissions: ["games.play"] },
+    });
+    expect(JSON.parse(textOf(role))).toMatchObject({ slug: "player", name: "Player" });
+
+    const action = await client.callTool({
+      name: "create_action",
+      arguments: { slug: "games.play", name: "Play games" },
+    });
+    expect(JSON.parse(textOf(action))).toMatchObject({ slug: "games.play" });
     await client.close();
   });
 

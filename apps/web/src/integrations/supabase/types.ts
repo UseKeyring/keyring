@@ -764,6 +764,26 @@ export type Database = {
       api_revoke_grant: { Args: { _hash: string; _role: string; _subject: string }; Returns: boolean }
       api_list_roles: { Args: { _hash: string }; Returns: Json }
       api_list_permissions: { Args: { _hash: string }; Returns: Json }
+      api_create_role: {
+        Args: {
+          _hash: string
+          _slug: string
+          _name: string
+          _description?: string | null
+          _permissions?: string[] | null
+        }
+        Returns: Json
+      }
+      api_create_permission: {
+        Args: {
+          _hash: string
+          _slug: string
+          _name: string
+          _category?: string | null
+          _description?: string | null
+        }
+        Returns: Json
+      }
       my_console_permissions: { Args: Record<string, never>; Returns: string[] }
       request_to_join_org: { Args: { _slug: string }; Returns: string }
       decide_join_request: {

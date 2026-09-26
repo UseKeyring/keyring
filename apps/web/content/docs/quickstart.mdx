@@ -10,7 +10,7 @@ import { Steps, Step } from "fumadocs-ui/components/steps";
 ## What you need
 
 - A Keyring workspace with at least one **role** and one **action** defined in the console.
-- Your Keyring app origin as `baseUrl` (e.g. `https://app.example.com`).
+- Your Keyring app origin as `baseUrl` — `https://usekeyring.dev` for the hosted app, or your self-hosted origin.
 - Two API keys from **Settings → API keys**: a **secret** key for the server, a **publishable** key for the browser.
 - Your own auth provider (Clerk / Supabase / WorkOS / …) — Keyring does not log your users in, it authorizes them.
 
@@ -45,7 +45,7 @@ import { Keyring } from "@usekeyring/sdk";
 
 const keyring = new Keyring({
   apiKey: process.env.KEYRING_SECRET_KEY!, // kr_sk_live_…
-  baseUrl: process.env.KEYRING_URL!, // your Keyring origin
+  baseUrl: process.env.KEYRING_URL!, // https://usekeyring.dev (or your self-hosted origin)
 });
 
 // Give the user a role (your IDs, your display names)
@@ -67,7 +67,7 @@ const { allowed } = await keyring.check(user.id, "invoices.refund");
 if (!allowed) throw new Error("Forbidden");
 ```
 
-The secret key needs the `check` scope to check, `grants.write` to grant/revoke, and `subject_tokens.write` to mint browser tokens.
+The secret key needs the `check` scope to check, `grants.write` to grant/revoke, and `subject_tokens.write` to mint browser tokens. To bootstrap roles/actions from code instead of the dashboard, also select `roles.write` and `actions.write` — then `createPermission()` each action first, `createRole({ permissions })`, and finally `grantRole()`.
 </Step>
 
 <Step>

@@ -4,6 +4,10 @@ import { detectKeyKind, requireSecretKey } from "./key-kind.js";
 import type {
   CheckOptions,
   CheckResult,
+  CreatePermissionInput,
+  CreatePermissionResult,
+  CreateRoleInput,
+  CreateRoleResult,
   CreateSubjectTokenInput,
   GrantInput,
   GrantResult,
@@ -210,6 +214,56 @@ export class Keyring {
       role: input.from,
       subject: input.subject,
     });
+  }
+
+  /**
+   * Create (or update) a role in the key's workspace. Idempotent — re-creating
+   * the same slug updates name/description and adds permission links.
+   * Secret key with `roles.write` scope only.
+   */
+  async createRole(input: CreateRoleInput): Promise<CreateRoleResult> {
+    requireSecretKey(this.apiKey, "create roles");
+    return apiRequest<CreateRoleResult>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/roles",
+      method: "POST",
+      body: {
+        slug: input.slug,
+        name: input.name,
+        description: input.description,
+        permissions: input.permissions,
+      },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+  }
+
+  /**
+   * Create (or update) an action in the key's workspace. Idempotent.
+   * Secret key with `actions.write` scope only.
+   */
+  async createPermission(input: CreatePermissionInput): Promise<CreatePermissionResult> {
+    requireSecretKey(this.apiKey, "create actions");
+    return apiRequest<CreatePermissionResult>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/permissions",
+      method: "POST",
+      body: {
+        slug: input.slug,
+        name: input.name,
+        category: input.category,
+        description: input.description,
+      },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+  }
+
+  /** Alias for createPermission() — matches product “actions” language. */
+  createAction(input: CreatePermissionInput): Promise<CreatePermissionResult> {
+    return this.createPermission(input);
   }
 
   async listRoles(): Promise<Role[]> {

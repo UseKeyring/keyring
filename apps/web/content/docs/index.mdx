@@ -5,7 +5,7 @@ description: Keyring is access-control infrastructure — actions, roles, grants
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Keyring is access-control infrastructure for your product. You define **actions** (`invoices.refund`, `members.invite`), compose them into **roles**, grant roles to your product's users (**subjects**), and answer any access question in one call.
+Keyring is access-control infrastructure for your product, hosted at [https://usekeyring.dev](https://usekeyring.dev). You define **actions** (`invoices.refund`, `members.invite`), compose them into **roles**, grant roles to your product's users (**subjects**), and answer any access question in one call.
 
 ## The model
 
@@ -28,7 +28,9 @@ Console accounts (your team) never enter the graph. Subjects connect by your own
 | Secret | `kr_sk_live_…` (legacy `kr_live_…`) | Server env only | Any selected scopes |
 | Publishable | `kr_pk_live_…` | Frontend (`NEXT_PUBLIC_…`) | `check` only, with a subject token |
 
-Scopes are picked at key creation (Settings → API keys): `check`, `grants.write`, `roles.read`, `actions.read`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Publishable keys are capped to `check`. Missing scope → `403`.
+Scopes are picked at key creation (Settings → API keys): `check`, `grants.write`, `roles.read`, `roles.write`, `actions.read`, `actions.write`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Publishable keys are capped to `check`. Missing scope → `403`.
+
+Roles and actions can be created key-first — no dashboard step required: `POST /api/v1/permissions` (scope `actions.write`), then `POST /api/v1/roles` with `permissions` (scope `roles.write`). See [API reference](/docs/api-reference).
 
 <Callout title="Enforce on the server">
   Browser `check()` is for UX (show/hide UI). Always enforce with a secret key on your server.

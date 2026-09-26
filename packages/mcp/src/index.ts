@@ -6,7 +6,7 @@ import { createServer } from "./server.js";
 export function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {
-    console.error(`[keyring-mcp] ${name} is required (e.g. KEYRING_API_KEY=kr_sk_live_… KEYRING_BASE_URL=https://app.example.com)`);
+    console.error(`[keyring-mcp] ${name} is required (e.g. KEYRING_API_KEY=kr_sk_live_… KEYRING_BASE_URL=https://usekeyring.dev)`);
     process.exit(1);
   }
   return value;

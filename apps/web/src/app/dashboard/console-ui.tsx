@@ -390,16 +390,18 @@ export function OverviewSetupSteps({
     `- API keys issued: ${keysCount}`,
     ``,
     `## MANAGEMENT API ENDPOINTS`,
-    `- Prefer @usekeyring/sdk. Secret key kr_sk_… (server): grant/revoke/list/check + mint subject tokens. Publishable key kr_pk_… (browser): check only with X-Keyring-Subject-Token.`,
-    `- Base URL: /api/v1 (Authorization: Bearer <KEY>)`,
-    `- Check (secret): GET /api/v1/check?subject=<USER_ID>&permission=<ACTION_SLUG>`,
-    `- Check (publishable): GET /api/v1/check?permission=<ACTION_SLUG> + X-Keyring-Subject-Token`,
-    `- Mint subject token: POST /api/v1/subject-tokens { "subject": "<USER_ID>", "ttl_seconds"?: number }`,
-    `- Grant Role: POST /api/v1/grants { "role": "<ROLE_SLUG>", "subject": "<USER_ID>" }`,
-    `- Temporary grant (e.g. 5 min): POST /api/v1/grants { "role": "<ROLE_SLUG>", "subject": "<USER_ID>", "ttl_seconds": 300 } (or "expires_at": "<ISO>"); check() denies after expiry, no revoke needed`,
-    `- Revoke Role: DELETE /api/v1/grants { "role": "<ROLE_SLUG>", "subject": "<USER_ID>" }`,
-    `- List Customer Roles: GET /api/v1/roles`,
-    `- List Actions: GET /api/v1/permissions`,
+    `- Hosted at https://usekeyring.dev. Docs: https://usekeyring.dev/docs. Prefer @usekeyring/sdk with baseUrl "https://usekeyring.dev". Secret key kr_sk_… (server): create/list/check/grant/revoke + mint subject tokens. Publishable key kr_pk_… (browser): check only with X-Keyring-Subject-Token.`,
+    `- Base URL: https://usekeyring.dev/api/v1 (Authorization: Bearer <KEY>)`,
+    `- Create Action: POST https://usekeyring.dev/api/v1/permissions { "slug": "<resource.action>", "name": "<Name>", "category"?: "<Category>" } (scope actions.write; idempotent)`,
+    `- Create Role: POST https://usekeyring.dev/api/v1/roles { "slug": "<role-slug>", "name": "<Name>", "permissions"?: ["<ACTION_SLUG>"] } (scope roles.write; idempotent; actions must exist first; links are additive)`,
+    `- Check (secret): GET https://usekeyring.dev/api/v1/check?subject=<USER_ID>&permission=<ACTION_SLUG>`,
+    `- Check (publishable): GET https://usekeyring.dev/api/v1/check?permission=<ACTION_SLUG> + X-Keyring-Subject-Token`,
+    `- Mint subject token: POST https://usekeyring.dev/api/v1/subject-tokens { "subject": "<USER_ID>", "ttl_seconds"?: number }`,
+    `- Grant Role: POST https://usekeyring.dev/api/v1/grants { "role": "<ROLE_SLUG>", "subject": "<USER_ID>" }`,
+    `- Temporary grant (e.g. 5 min): POST https://usekeyring.dev/api/v1/grants { "role": "<ROLE_SLUG>", "subject": "<USER_ID>", "ttl_seconds": 300 } (or "expires_at": "<ISO>"); check() denies after expiry, no revoke needed`,
+    `- Revoke Role: DELETE https://usekeyring.dev/api/v1/grants { "role": "<ROLE_SLUG>", "subject": "<USER_ID>" }`,
+    `- List Customer Roles: GET https://usekeyring.dev/api/v1/roles`,
+    `- List Actions: GET https://usekeyring.dev/api/v1/permissions`,
     ``,
     `## AGENT INSTRUCTIONS`,
     `- Audit my application codebase to identify required permission actions (e.g., "documents.read", "billing.manage").`,
@@ -409,7 +411,7 @@ export function OverviewSetupSteps({
     existingRoles.length > 0
       ? `- I already have these roles defined: ${existingRoles.join(", ")}. Adjust role-action mappings if needed.`
       : `- Create customer roles (e.g., "admin", "editor", "viewer") grouping those permission actions.`,
-    `- Implement backend middleware with a secret key that includes the check scope (or @usekeyring/sdk) calling /api/v1/check. Key scopes (check, grants.write, roles.read, actions.read, subject_tokens.write) gate each endpoint. Publishable keys are check-only with subject tokens.`,
+    `- Bootstrap order with a secret key holding check + grants.write + roles.write + actions.write (+ subject_tokens.write if minting browser tokens): create actions first, then roles with permissions, then grants. Or @usekeyring/sdk with baseUrl "https://usekeyring.dev": createPermission() → createRole({ permissions }) → grantRole() → check(). Key scopes (check, grants.write, roles.read, roles.write, actions.read, actions.write, subject_tokens.write) gate each endpoint. Publishable keys are check-only with subject tokens.`,
   ].join("\n");
 
   const copyPrompt = () => {

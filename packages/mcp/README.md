@@ -11,17 +11,19 @@ It wraps [`@usekeyring/sdk`](../sdk) and talks to the Keyring Management API
 ## Requirements
 
 - A **secret** API key (`kr_sk_live_…`, legacy `kr_live_…`) with the scopes
-  the agent needs: `check`, `grants.write`, `roles.read`, `actions.read`,
-  `subject_tokens.write`. Create one in Settings — publishable keys are
-  rejected at startup.
-- `KEYRING_BASE_URL` — your Keyring app origin (e.g. `https://app.example.com`).
+  the agent needs: `check`, `grants.write`, `roles.read`, `roles.write`,
+  `actions.read`, `actions.write`, `subject_tokens.write`. Create one in
+  Settings — publishable keys are rejected at startup. For key-first
+  bootstrap (create actions/roles without the dashboard), the key needs
+  `actions.write` + `roles.write`.
+- `KEYRING_BASE_URL` — your Keyring app origin (`https://usekeyring.dev` for the hosted app).
 
 ## Run
 
 ```sh
 bun install
 bun --filter @keyring/mcp build
-KEYRING_API_KEY=kr_sk_live_… KEYRING_BASE_URL=https://app.example.com bun --filter @keyring/mcp start
+KEYRING_API_KEY=kr_sk_live_… KEYRING_BASE_URL=https://usekeyring.dev bun --filter @keyring/mcp start
 ```
 
 ## Connect your agent
@@ -37,7 +39,7 @@ Claude Desktop (`claude_desktop_config.json`), Cursor and VS Code
       "args": ["/absolute/path/to/keyring/packages/mcp/dist/index.js"],
       "env": {
         "KEYRING_API_KEY": "kr_sk_live_…",
-        "KEYRING_BASE_URL": "https://app.example.com"
+        "KEYRING_BASE_URL": "https://usekeyring.dev"
       }
     }
   }
@@ -54,7 +56,7 @@ opencode (`opencode.json`):
       "command": ["node", "/absolute/path/to/keyring/packages/mcp/dist/index.js"],
       "env": {
         "KEYRING_API_KEY": "kr_sk_live_…",
-        "KEYRING_BASE_URL": "https://app.example.com"
+        "KEYRING_BASE_URL": "https://usekeyring.dev"
       }
     }
   }
@@ -70,6 +72,8 @@ Rebuild after pulling (`bun --filter @keyring/mcp build`) — clients run `dist/
 | `check_access` | Is `subject` allowed `permission`? | `check` |
 | `list_roles` | All roles in the active workspace | `roles.read` |
 | `list_actions` | All actions in the active workspace | `actions.read` |
+| `create_role` | Create/update a role, optionally attaching existing actions | `roles.write` |
+| `create_action` | Create/update an action | `actions.write` |
 | `grant_role` | Grant `role` to `subject` | `grants.write` |
 | `revoke_role` | Revoke `role` from `subject` (marked destructive) | `grants.write` |
 | `replace_role` | Grant `to`, then revoke `from` (marked destructive) | `grants.write` |

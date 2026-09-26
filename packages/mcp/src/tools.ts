@@ -46,6 +46,23 @@ export const ReplaceRoleSchema = {
     .describe("Optional human-readable label stored with the new grant"),
 };
 
+export const CreateRoleSchema = {
+  slug: z.string().min(1).describe("Role slug, lowercase with dashes (e.g. player)"),
+  name: z.string().min(1).describe("Human-readable role name (e.g. Player)"),
+  description: z.string().optional().describe("Optional description"),
+  permissions: z
+    .array(z.string().min(1))
+    .optional()
+    .describe("Action slugs to attach — must already exist (create them first)"),
+};
+
+export const CreateActionSchema = {
+  slug: z.string().min(1).describe("Action slug, resource.action (e.g. games.play)"),
+  name: z.string().min(1).describe("Human-readable action name (e.g. Play games)"),
+  category: z.string().optional().describe("Single Capitalized word, default General"),
+  description: z.string().optional().describe("Optional description"),
+};
+
 export const CreateSubjectTokenSchema = {
   subject: SubjectSchema,
   ttlSeconds: z
@@ -72,7 +89,7 @@ export function formatToolError(err: unknown): TextResult {
       err.status === 401
         ? " Check KEYRING_API_KEY — it must be a valid secret key (kr_sk_live_… or legacy kr_live_…)."
         : err.status === 403
-          ? " The key lacks the required scope (check, grants.write, roles.read, actions.read, subject_tokens.write) or the subject/role is outside the active workspace."
+          ? " The key lacks the required scope (check, grants.write, roles.read, roles.write, actions.read, actions.write, subject_tokens.write) or the subject/role is outside the active workspace."
           : "";
     return {
       content: [{ type: "text", text: `Keyring API error (${err.status}): ${err.message}.${hint}` }],
@@ -166,6 +183,34 @@ export function registerTools(server: McpServer, keyring: Keyring): void {
       try {
         await keyring.replaceRole({ subject, from, to, displayName });
         return ok({ ok: true, subject, from, to });
+      } catch (err) {
+        return formatToolError(err);
+      }
+    },
+  );
+
+  server.tool(
+    "create_role",
+    "Create (or update) a role and optionally attach existing actions to it. Requires the `roles.write` scope. Create actions first — unknown action slugs fail with no partial write.",
+    CreateRoleSchema,
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    async ({ slug, name, description, permissions }) => {
+      try {
+        return ok(await keyring.createRole({ slug, name, description, permissions }));
+      } catch (err) {
+        return formatToolError(err);
+      }
+    },
+  );
+
+  server.tool(
+    "create_action",
+    "Create (or update) an action (permission) in the active workspace. Requires the `actions.write` scope.",
+    CreateActionSchema,
+    { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    async ({ slug, name, category, description }) => {
+      try {
+        return ok(await keyring.createPermission({ slug, name, category, description }));
       } catch (err) {
         return formatToolError(err);
       }

@@ -5,7 +5,7 @@ export type SubjectTokenSource = string | (() => string | null | undefined | Pro
 export type KeyringOptions = {
   /** Secret (`kr_sk_…` / legacy `kr_live_…`) or publishable (`kr_pk_…`) API key. */
   apiKey: string;
-  /** Keyring app origin, e.g. https://app.example.com */
+  /** Keyring app origin, e.g. https://usekeyring.dev */
   baseUrl: string;
   /** Browser: subject token string or lazy getter (cookie / memory). */
   subjectToken?: SubjectTokenSource;
@@ -105,6 +105,39 @@ export type ReplaceRoleInput = {
 export type CreateSubjectTokenInput = {
   subject: string;
   ttlSeconds?: number;
+};
+
+export type CreateRoleInput = {
+  slug: string;
+  name: string;
+  description?: string;
+  /**
+   * Action slugs to attach (must already exist — create them first with
+   * `createPermission`). Additive: re-creating never removes mappings.
+   */
+  permissions?: string[];
+};
+
+export type CreatePermissionInput = {
+  slug: string;
+  name: string;
+  category?: string;
+  description?: string;
+};
+
+export type CreateRoleResult = {
+  slug: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+};
+
+export type CreatePermissionResult = {
+  slug: string;
+  name: string;
+  description: string | null;
+  category: string;
+  created_at: string;
 };
 
 export type CheckOptions = {

@@ -16,7 +16,7 @@ bun add @usekeyring/sdk
 | Secret | `kr_sk_live_…` (legacy `kr_live_…`) | Server env only | Any selected Management API scopes |
 | Publishable | `kr_pk_live_…` | Frontend (`NEXT_PUBLIC_…`) | `check` only (with a subject token) |
 
-Scopes are chosen when you create the key (Polar-style picker): `check`, `grants.write`, `roles.read`, `actions.read`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Missing a scope → `403`.
+Scopes are chosen when you create the key (Polar-style picker): `check`, `grants.write`, `roles.read`, `roles.write`, `actions.read`, `actions.write`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Missing a scope → `403`. For key-first bootstrap (no dashboard), select `roles.write` + `actions.write`.
 
 Create keys in the Keyring console under **Settings → API keys**.
 
@@ -31,6 +31,11 @@ const keyring = new Keyring({
   apiKey: process.env.KEYRING_SECRET_KEY!,
   baseUrl: process.env.KEYRING_URL!,
 });
+
+// Key-first bootstrap (needs roles.write + actions.write scopes) —
+// create the action first, then the role linking it:
+await keyring.createPermission({ slug: "invoices.refund", name: "Refund invoices" });
+await keyring.createRole({ slug: "viewer", name: "Viewer", permissions: ["invoices.refund"] });
 
 await keyring.grantRole({
   role: "viewer",
@@ -126,6 +131,8 @@ and run on the server. Publishable keys (`kr_pk_…`) can only call `check()` /
 | `check(subject, permission, { context? })` | Secret | `GET /api/v1/check?subject=…&permission=…` |
 | `check(permission, { subjectToken?, context? })` | Publishable | Subject comes from the JWT; `subject` query is never sent |
 | `assert(…)` | Either (same signatures as `check`) | Returns the `CheckResult` when allowed, throws `ForbiddenError` otherwise |
+| `createPermission({ slug, name, category?, description? })` / `createAction()` (alias) | Secret (`actions.write`) | `POST /api/v1/permissions` — idempotent, update on re-POST |
+| `createRole({ slug, name, description?, permissions? })` | Secret (`roles.write`) | `POST /api/v1/roles` — idempotent; `permissions` must exist, links are additive |
 | `grantRole({ role, subject, displayName?, expiresAt?, ttlSeconds?, condition? })` | Secret | `POST /api/v1/grants` — idempotent, auto-provisions the subject |
 | `revokeRole({ role, subject })` | Secret | `DELETE /api/v1/grants` |
 | `replaceRole({ subject, from, to, displayName?, expiresAt?, ttlSeconds?, condition? })` | Secret | Grant `to`, then revoke `from` |
@@ -217,7 +224,7 @@ const keyring = new Keyring({
 });
 ```
 
-`baseUrl` is the Keyring app origin (e.g. `https://app.example.com`).
+`baseUrl` is the Keyring app origin (`https://usekeyring.dev` for the hosted app, or your self-hosted origin).
 `keyKind` (`"secret" | "publishable"`) is detected from the key prefix and
 exposed as `keyring.keyKind`. `subjectToken` also accepts a plain string, and
 any per-call `check(permission, { subjectToken })` overrides it.

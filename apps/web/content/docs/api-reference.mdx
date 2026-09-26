@@ -5,7 +5,7 @@ description: Raw Management API (/api/v1) — auth, scopes, and endpoints behind
 
 All routes take `Authorization: Bearer <key>` (`kr_sk_live_…` / `kr_pk_live_…` / legacy `kr_live_…`). Key metadata (workspace, type, scopes, expiry) is resolved per request; bad/revoked/expired → `401`. Missing scope → `403`.
 
-Built-in scopes: `check`, `grants.write`, `roles.read`, `actions.read`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Publishable keys are capped to `check`.
+Built-in scopes: `check`, `grants.write`, `roles.read`, `roles.write`, `actions.read`, `actions.write`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Publishable keys are capped to `check`.
 
 ## GET /api/v1/check
 
@@ -35,10 +35,37 @@ Secret, scope `subject_tokens.write`. Mint a browser JWT. Body: `{ subject, ttl_
 
 Secret. `roles.read` → `{ roles: [{ slug, name, description, created_at }] }`; `actions.read` → `{ permissions: [...] }` (SDK alias `listActions()`).
 
+## POST /api/v1/roles · POST /api/v1/permissions
+
+Secret. Create (or update) a role or action in the key's workspace — no dashboard step needed. Both are idempotent: re-POSTing the same slug updates `name` / `description` (and adds permission links) instead of failing.
+
+```http
+POST /api/v1/permissions
+Authorization: Bearer kr_sk_live_…
+Content-Type: application/json
+
+{ "slug": "games.play", "name": "Play games", "category": "Games" }
+```
+
+- Scope `actions.write`. Role slugs are lowercase with dashes (`player`); action slugs are `resource.action` (`games.play`). Bad slug → `400`.
+- Response `201`: `{ "slug": "games.play", "name": "Play games", "description": null, "category": "Games", "created_at": "…" }`.
+
+```http
+POST /api/v1/roles
+Authorization: Bearer kr_sk_live_…
+Content-Type: application/json
+
+{ "slug": "player", "name": "Player", "permissions": ["games.play", "games.create"] }
+```
+
+- Scope `roles.write`. `permissions` must already exist — create actions first. Unknown action slug → `404` (`Unknown permission: …`) with no partial write.
+- Permission links are additive: re-POSTing never removes existing mappings.
+- SDK: `keyring.createPermission({ slug, name })`, `keyring.createRole({ slug, name, permissions })` (alias `createAction()`).
+
 ## POST /api/v1/events
 
 Secret, scope `telemetry.write`. Manual telemetry event paired with auto-logged checks. Body: `{ subject, permission, allowed?, context? }` → `{ ok: true, id }`.
 
 ## Errors
 
-`{ "error": "…" }` with `400` (bad input, e.g. missing `permission`/`subject`, invalid `context`), `401` (bad key / bad subject token), `403` (missing scope), `404`, `500` (API not configured).
+`{ "error": "…" }` with `400` (bad input, e.g. missing `permission`/`subject`, invalid `context`, bad role/action slug), `401` (bad key / bad subject token), `403` (missing scope), `404` (unknown role / unknown permission), `500` (API not configured).

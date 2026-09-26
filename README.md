@@ -166,13 +166,15 @@ signed with `SUBJECT_TOKEN_SECRET` on the Keyring app (see `.env.example`).
 
 ### TypeScript SDK (`@usekeyring/sdk`)
 
+Hosted at `https://usekeyring.dev` — use that as `baseUrl` unless self-hosting.
+
 ```ts
 import { Keyring } from "@usekeyring/sdk";
 
 // Server
 const keyring = new Keyring({
   apiKey: process.env.KEYRING_SECRET_KEY!,
-  baseUrl: process.env.KEYRING_URL!,
+  baseUrl: process.env.KEYRING_URL!, // https://usekeyring.dev
 });
 
 await keyring.grantRole({ role: "viewer", subject: newUser.id });
