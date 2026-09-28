@@ -33,6 +33,18 @@ export function newPublishableApiKey(): string {
   return newApiKey("publishable");
 }
 
+/*
+ * Outbound webhook signing secrets. Generated exactly like API keys (32
+ * crypto-random bytes, base64url) with their own prefix so a webhook secret
+ * can never be mistaken for an API key and vice versa. Unlike API keys the
+ * raw value must stay recoverable server-side — the dispatcher HMAC-signs
+ * every delivery with it — so it is stored (RLS-gated to org managers),
+ * shown once at creation, and never displayed again afterwards.
+ */
+export function newWebhookSecret(): string {
+  return `kr_ws_live_${randomKeyBody()}`;
+}
+
 export function detectApiKeyKind(raw: string): ApiKeyKind {
   if (raw.startsWith("kr_pk_")) return "publishable";
   return "secret";

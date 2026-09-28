@@ -1,0 +1,56 @@
+---
+title: Neon RLS mirroring
+description: Mirror Keyring access into your Neon Postgres so RLS checks keyring.has_for() / keyring.can_for() locally.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Neon is plain Postgres — no `auth.uid()`, no Auth hooks. Your app sets the current subject per request, and RLS reads the same `keyring.access` mirror as Supabase (single-org, expired rows stay but are filtered).
+
+## 1. Run the mirror schema
+
+Same file as Supabase: `templates/customer-mirror/schema.sql`. For Neon use the `_for` variants:
+
+```sql
+-- per request, after keyring.check() allows it:
+select set_config('app.uid', 'user_abc123', true);
+
+create policy "teachers insert records" on public.records
+for insert with check (
+  keyring.has_for(current_setting('app.uid', true), 'teacher')
+);
+create policy "clinicians read doctors" on public.doctors
+for select using (
+  keyring.can_for(current_setting('app.uid', true), 'doctors.read')
+);
+```
+
+## 2. Provision subjects
+
+Neon has no `auth.users` trigger — provision from wherever your auth lives (Clerk `user.created` webhook, Auth.js callback, your signup route):
+
+```ts
+await keyring.grantRole({ role: "app_user", subject: user.id, displayName: user.email });
+```
+
+## 3. Feed the mirror
+
+Same two feeds as Supabase:
+
+- **Push:** `POST /api/v1/webhooks` pointing at any HTTPS applier you run (the Deno `applier.ts` template works on any runtime with a Postgres client — swap the Supabase admin client for `neon-http` / `pg`). Verify the HMAC signature, then upsert/delete `keyring.access` rows.
+- **Pull:** nightly cron over user IDs with `keyring.getSubjectAccess(user.id)` → replace rows. Heals missed webhooks and role-definition fan-out.
+
+```ts
+await keyring.createWebhook({
+  name: "neon mirror",
+  url: "https://api.you.dev/hooks/keyring",
+  events: ["grant.*", "subject.deleted"],
+});
+// → { secret: "kr_ws_live_…" } — server-minted, shown ONCE. Copy it now.
+```
+
+<Callout title="Branching is free">
+  Neon branches copy app data, not Keyring grants. Access stays canonical in Keyring — preview branches get correct authorization without syncing, as long as they share the mirror feed or call `keyring.check()` directly.
+</Callout>
+
+For request-path gating without RLS, the SDK alone is enough: `check()` / `assert()` before issuing SQL. The mirror only matters when you want enforcement inside Postgres policies.

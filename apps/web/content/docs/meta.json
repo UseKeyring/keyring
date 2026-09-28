@@ -1,4 +1,4 @@
 {
   "title": "Docs",
-  "pages": ["index", "quickstart", "typescript-sdk", "api-reference"]
+  "pages": ["index", "quickstart", "typescript-sdk", "api-reference", "supabase-rls", "neon-rls"]
 }

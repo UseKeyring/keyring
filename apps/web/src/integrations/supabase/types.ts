@@ -142,6 +142,119 @@ export type Database = {
           },
         ]
       }
+      webhook_endpoints: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          events: string[]
+          failure_count: number
+          id: string
+          last_triggered_at: string | null
+          name: string
+          organization_id: string
+          secret: string
+          url: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          failure_count?: number
+          id?: string
+          last_triggered_at?: string | null
+          name: string
+          organization_id: string
+          // Optional: omitted → the fill trigger (0036) mints kr_ws_live_…
+          // at creation and returns it once.
+          secret?: string
+          url: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          failure_count?: number
+          id?: string
+          last_triggered_at?: string | null
+          name?: string
+          organization_id?: string
+          // Writable as null: the fill trigger (0036) mints a fresh
+          // kr_ws_live_… before the NOT NULL check runs (reset flow).
+          secret?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_endpoints_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_outbox: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          delivered_at: string | null
+          endpoint_id: string
+          event: string
+          http_code: number | null
+          id: string
+          last_error: string | null
+          next_retry_at: string
+          organization_id: string
+          payload: Json
+          response: string | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          endpoint_id: string
+          event: string
+          http_code?: number | null
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string
+          organization_id: string
+          payload?: Json
+          response?: string | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          endpoint_id?: string
+          event?: string
+          http_code?: number | null
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string
+          organization_id?: string
+          payload?: Json
+          response?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_outbox_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           category: string
@@ -783,6 +896,25 @@ export type Database = {
           _description?: string | null
         }
         Returns: Json
+      }
+      api_get_subject_access: {
+        Args: { _hash: string; _subject: string }
+        Returns: Json
+      }
+      api_create_webhook_endpoint: {
+        Args: {
+          _hash: string
+          _name: string
+          _url: string
+          _secret?: string | null
+          _events?: string[] | null
+        }
+        Returns: Json
+      }
+      api_list_webhook_endpoints: { Args: { _hash: string }; Returns: Json }
+      api_delete_webhook_endpoint: {
+        Args: { _hash: string; _id: string }
+        Returns: boolean
       }
       my_console_permissions: { Args: Record<string, never>; Returns: string[] }
       request_to_join_org: { Args: { _slug: string }; Returns: string }

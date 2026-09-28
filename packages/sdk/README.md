@@ -16,7 +16,7 @@ bun add @usekeyring/sdk
 | Secret | `kr_sk_live_…` (legacy `kr_live_…`) | Server env only | Any selected Management API scopes |
 | Publishable | `kr_pk_live_…` | Frontend (`NEXT_PUBLIC_…`) | `check` only (with a subject token) |
 
-Scopes are chosen when you create the key (Polar-style picker): `check`, `grants.write`, `roles.read`, `roles.write`, `actions.read`, `actions.write`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Missing a scope → `403`. For key-first bootstrap (no dashboard), select `roles.write` + `actions.write`.
+Scopes are chosen when you create the key (Polar-style picker): `check`, `grants.write`, `roles.read`, `roles.write`, `actions.read`, `actions.write`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`, `webhooks.read`, `webhooks.write`. Missing a scope → `403`. For key-first bootstrap (no dashboard), select `roles.write` + `actions.write`.
 
 Create keys in the Keyring console under **Settings → API keys**.
 
@@ -141,6 +141,10 @@ and run on the server. Publishable keys (`kr_pk_…`) can only call `check()` /
 | `createSubjectToken({ subject, ttlSeconds? })` | Secret | `POST /api/v1/subject-tokens` → `{ token, subject, expiresAt: Date }` |
 | `setSubjectAttrs({ subject, attrs, displayName? })` | Secret | `POST /api/v1/subjects` — upsert (merge) attrs for ABAC conditions |
 | `track(subject, permission, { allowed?, context? })` | Secret (`telemetry.write`) | `POST /api/v1/events` — manual telemetry; `check()` auto-logs |
+| `getSubjectAccess(subject)` | Secret (`check`) | `GET /api/v1/subjects/access?subject=…` — snapshot `{ roles, permissions }` for mirror backfill/reconcile |
+| `createWebhook({ name, url, secret?, events? })` | Secret (`webhooks.write`) | `POST /api/v1/webhooks` — omit `secret` to have the server mint `kr_ws_live_…`, returned once in `CreateWebhookResult.secret` |
+| `listWebhooks()` | Secret (`webhooks.read`) | `GET /api/v1/webhooks` → `WebhookEndpoint[]` |
+| `deleteWebhook(id)` | Secret (`webhooks.write`) | `DELETE /api/v1/webhooks` |
 
 ### Checking with ABAC context
 

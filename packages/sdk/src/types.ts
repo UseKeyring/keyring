@@ -160,3 +160,37 @@ export type TrackResult = {
   ok: true;
   id: string;
 };
+
+export type SubjectAccess = {
+  subject: string;
+  roles: string[];
+  permissions: string[];
+};
+
+export type WebhookEndpoint = {
+  id: string;
+  name: string;
+  url: string;
+  events: string[];
+  active: boolean;
+  failure_count?: number;
+  last_triggered_at?: string | null;
+  created_at: string;
+};
+
+export type CreateWebhookResult = WebhookEndpoint & {
+  /** Raw signing secret — returned ONCE at creation, never again. */
+  secret: string;
+};
+
+export type CreateWebhookInput = {
+  name: string;
+  url: string;
+  /**
+   * Bring-your-own HMAC secret (min 16 chars). Omit to have the server mint
+   * kr_ws_live_… at creation — returned once in CreateWebhookResult.secret.
+   */
+  secret?: string;
+  /** Exact names (grant.created), prefixes (grant.*), or * — empty/omitted = all. */
+  events?: string[];
+};

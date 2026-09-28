@@ -9,6 +9,8 @@ import type {
   CreateRoleInput,
   CreateRoleResult,
   CreateSubjectTokenInput,
+  CreateWebhookInput,
+  CreateWebhookResult,
   GrantInput,
   GrantResult,
   KeyringOptions,
@@ -19,10 +21,12 @@ import type {
   Role,
   SetSubjectAttrsInput,
   SetSubjectAttrsResult,
+  SubjectAccess,
   SubjectTokenResult,
   SubjectTokenSource,
   TrackOptions,
   TrackResult,
+  WebhookEndpoint,
 } from "./types.js";
 
 async function resolveSubjectToken(
@@ -317,6 +321,70 @@ export class Keyring {
         allowed: opts?.allowed,
         context: opts?.context ?? {},
       },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+  }
+
+  /**
+   * Full access snapshot for one subject — backfill + nightly reconcile for
+   * customer mirrors (keyring.access). Secret key with `check` scope.
+   * Unknown subject → empty roles/permissions (not 404).
+   */
+  async getSubjectAccess(subject: string): Promise<SubjectAccess> {
+    requireSecretKey(this.apiKey, "read subject access snapshots");
+    return apiRequest<SubjectAccess>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/subjects/access",
+      query: { subject },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+  }
+
+  /** List outbound webhook endpoints. Secret key with `webhooks.read`. */
+  async listWebhooks(): Promise<WebhookEndpoint[]> {
+    requireSecretKey(this.apiKey, "list webhooks");
+    const data = await apiRequest<{ endpoints: WebhookEndpoint[] }>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/webhooks",
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+    return data.endpoints ?? [];
+  }
+
+  /** Create an outbound webhook endpoint. Secret key with `webhooks.write`.
+   * Omit secret to have the server mint one — returned once in `.secret`. */
+  async createWebhook(input: CreateWebhookInput): Promise<CreateWebhookResult> {
+    requireSecretKey(this.apiKey, "create webhooks");
+    return apiRequest<CreateWebhookResult>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/webhooks",
+      method: "POST",
+      body: {
+        name: input.name,
+        url: input.url,
+        secret: input.secret,
+        events: input.events,
+      },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+  }
+
+  /** Delete an outbound webhook endpoint. Secret key with `webhooks.write`. */
+  async deleteWebhook(id: string): Promise<void> {
+    requireSecretKey(this.apiKey, "delete webhooks");
+    await apiRequest<{ ok: true }>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/webhooks",
+      method: "DELETE",
+      body: { id },
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
     });

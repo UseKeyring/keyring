@@ -5,3 +5,7 @@ project_id = "deqzyuxlaiqfwrtlbwph"
 # polar-checkout / polar-portal keep the default (verify user JWT).
 [functions.polar-webhook]
 verify_jwt = false
+
+[functions.webhook-dispatch]
+verify_jwt = false
+enroll_jwt = false

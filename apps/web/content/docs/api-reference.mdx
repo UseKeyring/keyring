@@ -5,7 +5,7 @@ description: Raw Management API (/api/v1) — auth, scopes, and endpoints behind
 
 All routes take `Authorization: Bearer <key>` (`kr_sk_live_…` / `kr_pk_live_…` / legacy `kr_live_…`). Key metadata (workspace, type, scopes, expiry) is resolved per request; bad/revoked/expired → `401`. Missing scope → `403`.
 
-Built-in scopes: `check`, `grants.write`, `roles.read`, `roles.write`, `actions.read`, `actions.write`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`. Publishable keys are capped to `check`.
+Built-in scopes: `check`, `grants.write`, `roles.read`, `roles.write`, `actions.read`, `actions.write`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`, `webhooks.read`, `webhooks.write`. Publishable keys are capped to `check`.
 
 ## GET /api/v1/check
 
@@ -65,6 +65,86 @@ Content-Type: application/json
 ## POST /api/v1/events
 
 Secret, scope `telemetry.write`. Manual telemetry event paired with auto-logged checks. Body: `{ subject, permission, allowed?, context? }` → `{ ok: true, id }`.
+
+## GET /api/v1/subjects/access
+
+Secret, scope `check`. Full access snapshot for one subject — backfill + nightly reconcile for customer mirrors (`templates/customer-mirror/schema.sql`). Expired grants excluded (mirror filters them too; rows stay).
+
+```http
+GET /api/v1/subjects/access?subject=user_123
+Authorization: Bearer kr_sk_live_…
+```
+
+Response: `{ "subject": "user_123", "roles": ["teacher"], "permissions": ["records.insert"] }`. Unknown subject → empty arrays (not 404). SDK: `keyring.getSubjectAccess(subject)`.
+
+## GET /api/v1/webhooks · POST /api/v1/webhooks · DELETE /api/v1/webhooks
+
+Outbound mirror feed. Secret key: list needs `webhooks.read`, create/delete need `webhooks.write`.
+
+```http
+POST /api/v1/webhooks
+Authorization: Bearer kr_sk_live_…
+Content-Type: application/json
+
+{ "name": "supabase mirror", "url": "https://<project>.supabase.co/functions/v1/keyring-applier", "events": ["grant.*", "subject.deleted"] }
+```
+
+Omit `secret` to have the server mint `kr_ws_live_…` at creation (same 32-byte base64url body as API keys) — the raw value is returned **once** in the `201` response and never again. Supply your own (min 16 chars) to bring one.
+
+Events: `grant.created/updated/deleted`, `subject.created/updated/deleted`, `role.created/updated/deleted`, `permission.created/updated/deleted`, `role.permissions_updated`. Subscribe exact, prefix (`grant.*`), `*`, or omit/`[]` for all. Deliveries POST `{ id, event, organization_id, created_at, data }` with `webhook-id / webhook-timestamp / webhook-signature: v1,<base64 HMAC-SHA256>` headers. SDK: `keyring.createWebhook()` → `CreateWebhookResult` (includes `secret`), `keyring.listWebhooks()`, `keyring.deleteWebhook(id)`. See [Supabase RLS](/docs/supabase-rls) and [Neon RLS](/docs/neon-rls).
+
+### Dispatcher setup (Keyring host project)
+
+Triggers only **queue** rows in `webhook_outbox`. Delivery is instant + backed by cron:
+
+- **Instant (seconds):** migration `0039` adds an `AFTER INSERT` trigger on `webhook_outbox` that kicks `webhook-dispatch` via `pg_net` the moment rows land. Best-effort by design — if `pg_net`/config is missing it silently no-ops and can never fail your grant/role writes. Enable it with one row (same key as `WEBHOOK_DISPATCH_KEY`):
+
+```sql
+INSERT INTO public.webhook_dispatch_config (id, url, cron_key)
+VALUES (1, 'https://<keyring-project-ref>.supabase.co/functions/v1/webhook-dispatch', '<same WEBHOOK_DISPATCH_KEY>')
+ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, cron_key = EXCLUDED.cron_key, enabled = true;
+```
+
+- **Fallback (every minute):** the same function runs on a cron schedule to catch anything the kick missed (worker down, redeliveries). Deploy it first:
+
+```bash
+supabase functions deploy webhook-dispatch
+supabase secrets set WEBHOOK_DISPATCH_KEY="<random 32+ chars>"
+```
+
+Then schedule every minute (needs `pg_cron` + `pg_net` enabled — enable `pg_net`
+via Dashboard → Database → Extensions; its functions always live in the `net`
+schema, so the call below is `net.http_post` regardless of where the extension
+row is registered) in the SQL editor:
+
+```sql
+select cron.schedule(
+  'webhook-dispatch-every-minute',
+  '* * * * *',
+  $$
+  select net.http_post(
+    url := 'https://<keyring-project-ref>.supabase.co/functions/v1/webhook-dispatch',
+    headers := jsonb_build_object('Content-Type', 'application/json', 'X-Cron-Key', '<same WEBHOOK_DISPATCH_KEY>'),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+Polar-style: no automatic retries. Each queued delivery is attempted **once** — a failure marks it `failed` terminally (with the error in `last_error`), and it stays there until you hit **Redeliver** on the endpoint's detail page, which flips it back to `pending` for the next dispatcher tick. Every attempt records its HTTP `http_code` + a capped `response` snippet on the outbox row (migration `0038`), backing the per-endpoint Status column and Response block. Delivered rows older than 7 days are pruned automatically.
+
+Troubleshooting the dispatcher: if `cron.job_run_details` shows `schema "net" does not exist`, `pg_net` isn't enabled yet (Dashboard → Database → Extensions → enable `pg_net`). If it shows `function net.http_post(…) does not exist` while the extension row exists, the install is hollow — reinstall directly:
+
+```sql
+drop extension if exists pg_net;
+create extension pg_net with schema extensions;
+
+-- verify: functions live in the `net` schema (NOT `extensions`) —
+-- must return http_get / http_post / …
+select p.proname from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'net' and p.proname like 'http%';
+```
 
 ## Errors
 

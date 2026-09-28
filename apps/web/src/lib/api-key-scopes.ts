@@ -15,6 +15,8 @@ export const API_KEY_SCOPES = [
   "subject_tokens.write",
   "telemetry.read",
   "telemetry.write",
+  "webhooks.read",
+  "webhooks.write",
 ] as const;
 
 export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];

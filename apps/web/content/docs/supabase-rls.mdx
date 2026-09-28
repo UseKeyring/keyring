@@ -1,0 +1,76 @@
+---
+title: Supabase RLS mirroring
+description: Mirror Keyring access into your Supabase Postgres so RLS checks keyring.has() / keyring.can() locally.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Hosted Keyring can't be called synchronously from inside an RLS policy (per-row HTTPS + secrets in the DB). Instead you keep a tiny `keyring.access` mirror in **your** database, fed by webhooks + a snapshot endpoint. RLS then reads it locally — as fast as `author_id = auth.uid()`.
+
+<Steps>
+<Step>
+### Run the mirror schema (once, in your project)
+
+Copy `templates/customer-mirror/schema.sql` into your Supabase SQL editor. It creates:
+
+- `keyring.access(subject_id, role_slug, perm_slug, expires_at)` — single-org, no `organization_id` column. Expired rows **stay** and are **filtered** at read time.
+- `keyring.has('teacher')` — role check for `WITH CHECK` / `USING`.
+- `keyring.can('invoices.refund')` — capability check.
+
+```sql
+create policy "teachers insert records"
+on public.records for insert to authenticated
+with check (keyring.has('teacher'));
+
+create policy "refund own invoices"
+on public.invoices for update to authenticated
+using (author_id = auth.uid() and keyring.can('invoices.refund'));
+```
+
+No client insert/update/delete policies are created on purpose — only your applier (service_role) writes.
+</Step>
+
+<Step>
+### Sync signups → Keyring subjects
+
+Deploy `templates/customer-mirror/signup-sync.ts` as an Edge Function and wire it to `auth.users` inserts (Database Webhook). It calls `POST /api/v1/grants { role: "app_user", subject: newUser.id }` — auto-provisions the subject, fail-closed. Or skip it and `grantRole()` lazily on first request.
+</Step>
+
+<Step>
+### Deploy the applier + register the webhook
+
+1. Deploy `templates/customer-mirror/applier.ts` in your project as `keyring-applier` with secrets `KEYRING_WEBHOOK_SECRET` (the once-shown value from creation), `KEYRING_SECRET_KEY`, `KEYRING_URL`.
+2. Register it in Keyring (console Settings → Webhooks → Add Endpoint, or API):
+
+```ts
+await keyring.createWebhook({
+  name: "supabase mirror",
+  url: "https://<your-project>.supabase.co/functions/v1/keyring-applier",
+  events: ["grant.*", "subject.deleted"],
+});
+// → { id, ..., secret: "kr_ws_live_…" } — server-minted, shown ONCE.
+// Copy it into your applier as KEYRING_WEBHOOK_SECRET now.
+```
+
+Deliveries are HMAC-SHA256 signed (`webhook-id / webhook-timestamp / webhook-signature`); the applier verifies before writing. Grant events upsert with `expires_at`; `grant.deleted` / `subject.deleted` delete rows. Role-definition changes (`role.permissions_updated`) defer to reconcile.
+</Step>
+
+<Step>
+### Backfill + nightly reconcile
+
+```ts
+// Backfill one user (unknown subject → empty lists, safe to re-run)
+const snap = await keyring.getSubjectAccess(user.id);
+// → { subject, roles: ["teacher"], permissions: ["records.insert", ...] }
+```
+
+Run a nightly cron over your user IDs calling `getSubjectAccess()` and replacing that subject's `keyring.access` rows. This heals any missed webhook (downtime, rotation) and absorbs role-definition fan-out.
+</Step>
+</Steps>
+
+<Callout title="Keep RLS ownership too">
+  Keyring answers "may this role do this at all?"; RLS still answers "is this row theirs?" (`author_id = auth.uid()`). Use both. And re-check writes with `keyring.check()` server-side for instant revoke — JWT/mirror reads trail by seconds, the API never does.
+</Callout>
+
+Events catalog: `grant.created/updated/deleted`, `subject.created/updated/deleted`, `role.created/updated/deleted`, `permission.created/updated/deleted`, `role.permissions_updated`. Subscribe with exact names, prefixes (`grant.*`), `*`, or `[]` (all).
