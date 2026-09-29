@@ -18,6 +18,8 @@ Copy `templates/customer-mirror/schema.sql` into your Supabase SQL editor. It cr
 - `keyring.has('teacher')` — role check for `WITH CHECK` / `USING`.
 - `keyring.can('invoices.refund')` — capability check.
 
+Then expose the schema to PostgREST or **every** mirror write fails with `Invalid schema: keyring` (and old applier versions swallowed it as fake 200s): Dashboard → Settings → API → **Exposed schemas** → add `keyring` alongside `public`. Takes effect within a minute, no redeploy needed.
+
 ```sql
 create policy "teachers insert records"
 on public.records for insert to authenticated

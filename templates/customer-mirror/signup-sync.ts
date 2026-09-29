@@ -57,19 +57,25 @@ Deno.serve(async (req) => {
 
   // Provision log (see schema.sql: keyring.provision_log). The nightly
   // reconcile provisions auth users ABSENT from this table — never ones
-  // present, so deliberately revoked users stay revoked.
+  // present, so deliberately revoked users stay revoked. Failures here are
+  // REPORTED, never swallowed: a missing row means reconcile misfires.
+  let provisionLog: string = "skipped_no_env";
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (supabaseUrl && serviceKey) {
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.8");
     const admin = createClient(supabaseUrl, serviceKey);
-    await admin.schema("keyring").from("provision_log").upsert(
+    const { error: logError } = await admin.schema("keyring").from("provision_log").upsert(
       { subject_id: subject, role_slug: provisioned.role },
       { onConflict: "subject_id" },
     );
+    provisionLog = logError ? `failed: ${logError.message}` : "written";
+    if (logError) console.warn(`provision_log write failed for ${subject}: ${logError.message}`);
+  } else {
+    console.warn("provision_log skipped: missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
   }
 
-  return new Response(JSON.stringify({ ok: true, subject, role: provisioned.role, granted: provisioned.granted }), {
+  return new Response(JSON.stringify({ ok: true, subject, role: provisioned.role, granted: provisioned.granted, provision_log: provisionLog }), {
     headers: { "Content-Type": "application/json" },
   });
 });

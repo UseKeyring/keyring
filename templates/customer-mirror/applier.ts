@@ -62,6 +62,7 @@ type Delivery = {
 };
 
 Deno.serve(async (req) => {
+ try {
   const secret = Deno.env.get("KEYRING_WEBHOOK_SECRET");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -81,14 +82,20 @@ Deno.serve(async (req) => {
     // Needs KEYRING_SECRET_KEY + KEYRING_URL set on this function.
     const keyringSecret = Deno.env.get("KEYRING_SECRET_KEY");
     const keyringUrl = Deno.env.get("KEYRING_URL");
-    if (!keyringSecret || !keyringUrl) return;
+    if (!keyringSecret || !keyringUrl) {
+      throw new Error("Missing KEYRING_SECRET_KEY / KEYRING_URL — cannot refresh snapshot");
+    }
     const res = await fetch(
       `${keyringUrl}/api/v1/subjects/access?subject=${encodeURIComponent(subject)}`,
       { headers: { Authorization: `Bearer ${keyringSecret}` } },
     );
     if (!res.ok) throw new Error(`snapshot ${res.status}`);
     const snap = await res.json() as { roles: string[]; permissions: string[] };
-    await admin.schema("keyring").from("access").delete().eq("subject_id", subject);
+    // supabase-js NEVER throws on PostgREST errors — it returns { error }.
+    // Every write below checks it: an unchecked failure returns a fake 200
+    // and the mirror silently goes stale (this exact bug cost days once).
+    const { error: deleteError } = await admin.schema("keyring").from("access").delete().eq("subject_id", subject);
+    if (deleteError) throw new Error(`mirror delete failed: ${deleteError.message}`);
     const rows: Array<Record<string, unknown>> = [];
     for (const role of snap.roles ?? []) {
       for (const perm of snap.permissions ?? []) {
@@ -99,8 +106,12 @@ Deno.serve(async (req) => {
     // per-delivery expires_at (below) carries the precise value for the
     // common single-role case. Reconcile cron refreshes the rest.
     if (rows.length > 0) {
-      await admin.schema("keyring").from("access").upsert(rows, { onConflict: "subject_id,role_slug,perm_slug" });
+      const { error: upsertError } = await admin.schema("keyring").from("access").upsert(rows, { onConflict: "subject_id,role_slug,perm_slug" });
+      if (upsertError) throw new Error(`mirror upsert failed: ${upsertError.message}`);
     }
+    // Visible in function logs: the ONLY way to tell "wrote nothing because
+    // snapshot was empty" apart from "never ran".
+    console.log(JSON.stringify({ applier: "refresh", subject, roles: snap.roles ?? [], permissions: snap.permissions ?? [], rows_written: rows.length }));
   };
 
   switch (delivery.event) {
@@ -111,18 +122,18 @@ Deno.serve(async (req) => {
       // then upsert with this delivery's expires_at.
       await refreshSubject(d.subject);
       if (d.expires_at) {
-        await admin.schema("keyring").from("access").update({ expires_at: d.expires_at }).eq("subject_id", d.subject).eq("role_slug", d.role);
+        const { error: expiryError } = await admin.schema("keyring").from("access").update({ expires_at: d.expires_at }).eq("subject_id", d.subject).eq("role_slug", d.role);
+        if (expiryError) throw new Error(`mirror expiry update failed: ${expiryError.message}`);
       }
       return json({ ok: true });
     }
     case "grant.deleted":
     case "subject.deleted": {
       if (!d.subject) return json({ ok: true, skipped: true });
-      if (delivery.event === "grant.deleted" && d.role) {
-        await admin.schema("keyring").from("access").delete().eq("subject_id", d.subject).eq("role_slug", d.role);
-      } else {
-        await admin.schema("keyring").from("access").delete().eq("subject_id", d.subject);
-      }
+      const { error: deleteError } = delivery.event === "grant.deleted" && d.role
+        ? await admin.schema("keyring").from("access").delete().eq("subject_id", d.subject).eq("role_slug", d.role)
+        : await admin.schema("keyring").from("access").delete().eq("subject_id", d.subject);
+      if (deleteError) throw new Error(`mirror delete failed: ${deleteError.message}`);
       return json({ ok: true });
     }
     case "role.permissions_updated":
@@ -139,4 +150,11 @@ Deno.serve(async (req) => {
       // no mirror rows change until a grant exists.
       return json({ ok: true, ignored: delivery.event });
   }
+ } catch (err) {
+   // Real message in the body (not Deno's bare "Internal Server Error") so
+   // the dispatcher stores it and the console Response block shows the cause.
+   const message = err instanceof Error ? err.message : "Unknown error";
+   console.error(JSON.stringify({ applier: "failed", error: message }));
+   return json({ error: message }, 500);
+ }
 });

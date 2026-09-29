@@ -4,6 +4,9 @@
 -- Expiry: rows STAY, helpers FILTER (expires_at IS NULL OR > now()).
 -- Writes: ONLY the webhook applier (service_role) writes here. No client
 -- insert/update/delete policies are created on purpose.
+-- REQUIRED AFTER RUNNING: Dashboard → Settings → API → Exposed schemas →
+-- add `keyring`. Without this, PostgREST rejects every mirror write with
+-- `Invalid schema: keyring` and the applier can never land rows.
 -- ══════════════════════════════════════════════════════════════════════
 
 create schema if not exists keyring;
@@ -34,6 +37,17 @@ create table if not exists keyring.provision_log (
   role_slug text not null,
   provisioned_at timestamptz not null default now()
 );
+
+-- ── Least privilege on the mirror ───────────────────────────────────────────
+-- RLS enabled with NO policies = deny-by-default for anon / authenticated
+-- (they hold no grants either — verified). service_role bypasses RLS, the
+-- SECURITY DEFINER helpers below run as the table owner, and the applier +
+-- signup-sync both use service_role — so nothing legitimate is blocked.
+alter table if exists keyring.access enable row level security;
+alter table if exists keyring.provision_log enable row level security;
+grant usage on schema keyring to service_role;
+grant all on keyring.access to service_role;
+grant all on keyring.provision_log to service_role;
 
 -- ── Supabase helper: role check ─────────────────────────────────────────────
 -- Usage:  create policy "teachers insert records" on public.records
