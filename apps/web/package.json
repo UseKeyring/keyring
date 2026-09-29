@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "bun scripts/embed-connect-templates.ts",
     "build": "fumadocs-mdx && next build",
     "start": "next start",
     "lint": "ESLINT_USE_FLAT_CONFIG=false eslint .",

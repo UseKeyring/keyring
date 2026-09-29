@@ -1,0 +1,45 @@
+---
+title: Connect Supabase (one-click)
+description: Wire the full Keyring mirror into a Supabase project from the console — same login flow as the Supabase CLI, nothing pasted, nothing stored.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+
+Console Settings → **Supabase connect** wires everything the [manual mirroring guide](/docs/supabase-rls) does by hand, in one run: mirror schema, signup trigger, exposed schemas, both edge functions, all secrets, and the webhook endpoint.
+
+<Steps>
+<Step>
+### Create a Keyring key (once)
+
+Settings → API keys → new **secret** key with the `integrations.write` scope. You'll paste it into the connect form — held in memory for that run only, never stored.
+</Step>
+
+<Step>
+### Pick your default role
+
+Settings → **Default role**. New signups land here. Required before connecting — provisioning refuses without one.
+</Step>
+
+<Step>
+### Connect with Supabase
+
+Settings → **Supabase connect**: enter your project ref (20 lowercase letters, from your dashboard URL) + the key from step 1 → **Connect with Supabase**. Open the login link, approve it in the Supabase dashboard (you need admin on that project), paste the verification code back → **Verify & connect**.
+
+This is the exact device flow the Supabase CLI uses (ECDH keypair, encrypted token exchange). The Supabase token lives in memory for that single run and is then discarded — Keyring never stores it. Re-running later (template updates) just repeats the 30-second flow.
+</Step>
+
+<Step>
+### Watch the steps go green
+
+`project → pg_net → sql_schema → sql_trigger → postgrest → deploy_applier → deploy_signup → mirror_key → webhook_endpoint → secrets`. Then prove it: throwaway signup → subject + default grant in Keyring → green `200` delivery → `keyring.access` rows → `keyring.has()` true.
+</Step>
+</Steps>
+
+What gets created in your project: `keyring.*` mirror tables + helpers, `trg_keyring_signup` on `auth.users`, `keyring` added to exposed schemas, `keyring-applier` + `keyring-signup` functions (`verify_jwt = false`), and four secrets (`KEYRING_SECRET_KEY`, `KEYRING_URL`, `KEYRING_WEBHOOK_SECRET`, `SIGNUP_SHARED_SECRET`). In Keyring: a `supabase-mirror <ref>` secret key and a `supabase mirror` webhook endpoint. **Disconnect** removes the status row only — functions, secrets and keys stay until you clean them up (deliberate: disconnect must never break a live mirror by accident).
+
+<Callout title="Troubleshooting">
+  `project` fails → wrong ref or your Supabase user isn't admin on it. `supabase_login` fails → expired/wrong code (codes are single-use — start over). `pg_net` fails → enable it in Database → Extensions and re-run; everything else already landed. Any step red → the step list says exactly which call failed and why; nothing half-applied hides.
+</Callout>
+
+Prefer the manual path (or on Neon)? Follow [Supabase RLS mirroring](/docs/supabase-rls) instead — same end state, your hands on every step.

@@ -142,6 +142,77 @@ export type Database = {
           },
         ]
       }
+      supabase_integrations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          project_ref: string
+          provider: string
+          status: string
+          step_log: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          project_ref: string
+          provider?: string
+          status?: string
+          step_log?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          project_ref?: string
+          provider?: string
+          status?: string
+          step_log?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supabase_integrations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supabase_link_sessions: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          created_by: string | null
+          ecdh_private_hex: string
+          organization_id: string
+          session_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          ecdh_private_hex: string
+          organization_id: string
+          session_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          ecdh_private_hex?: string
+          organization_id?: string
+          session_id?: string
+        }
+        Relationships: []
+      }
       webhook_endpoints: {
         Row: {
           active: boolean
@@ -906,6 +977,22 @@ export type Database = {
       }
       api_provision_subject: {
         Args: { _hash: string; _subject: string; _display_name?: string | null }
+        Returns: Json
+      }
+      api_integration_session_create: {
+        Args: { _hash: string; _session: string; _priv: string }
+        Returns: undefined
+      }
+      api_integration_session_consume: {
+        Args: { _hash: string; _session: string }
+        Returns: Json
+      }
+      api_integration_upsert: {
+        Args: { _hash: string; _project_ref: string; _status: string; _steps?: Json | null }
+        Returns: Json
+      }
+      api_issue_mirror_key: {
+        Args: { _hash: string; _name: string; _key_hash: string; _prefix: string; _scopes: string[] }
         Returns: Json
       }
       api_create_webhook_endpoint: {

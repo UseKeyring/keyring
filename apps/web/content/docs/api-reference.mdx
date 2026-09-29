@@ -91,6 +91,10 @@ Content-Type: application/json
 
 Response: `{ "subject": "user_123", "role": "player", "granted": true }` (`granted: false` when already held). No default configured → `409 no_default_role` (fail-closed). SDK: `keyring.provisionSubject({ subject, displayName })`.
 
+## POST /api/v1/integrations/supabase/start · POST /api/v1/integrations/supabase/verify
+
+Secret, scope `integrations.write`. One-click mirror connect ([docs](/docs/supabase-connect)). `start` returns `{ session_id, login_url }` (Supabase CLI device flow); `verify { session_id, project_ref, code }` exchanges the code, then orchestrates SQL → PostgREST → function deploys → secrets → endpoint with the short-lived user token, returning `{ ok, steps: [{ step, ok, detail? }], endpoint_id }`. The Supabase token is never persisted. Step failures return `502` with the per-step log — nothing half-applied hides.
+
 ## GET /api/v1/webhooks · POST /api/v1/webhooks · DELETE /api/v1/webhooks
 
 Outbound mirror feed. Secret key: list needs `webhooks.read`, create/delete need `webhooks.write`.
