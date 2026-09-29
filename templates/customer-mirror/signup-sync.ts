@@ -1,20 +1,32 @@
-// Customer signup sync — deploy in YOUR Supabase project as a Database Webhook
-// or Edge Function triggered on auth.users insert.
+// Customer signup sync — deploy in YOUR Supabase project as an Edge Function
+// (e.g. `keyring-signup`), then wire it to auth.users inserts via
+// Dashboard → Database → Webhooks (table auth.users, event INSERT).
 //
-// Effect: every new login gets a Keyring subject + base role in one call.
-// POST /api/v1/grants auto-provisions the subject (fail-closed: holding
-// nothing until granted), so "create user" and "give base role" collapse.
+// Effect: every new login is provisioned into the workspace DEFAULT role
+// (chosen in Keyring console Settings → Default role) in one call.
+// POST /api/v1/subjects/provision auto-provisions the subject (fail-closed:
+// holding nothing until granted) and is idempotent — double-fires upsert.
+// No role slug crosses the wire: the server resolves the default, so this
+// function can never choose or escalate roles.
 //
-// Required secrets (customer project): KEYRING_SECRET_KEY, KEYRING_URL
-// (e.g. https://usekeyring.dev), KEYRING_BASE_ROLE (e.g. "app_user").
-
+// Required secrets (customer project, via `supabase secrets set`):
+// KEYRING_SECRET_KEY (grants.write), KEYRING_URL (e.g. https://usekeyring.dev),
+// SIGNUP_SHARED_SECRET (any random 32+ chars — also sent as the X-Signup-Key
+// header on the Database Webhook, so strangers can't mint default grants).
+// In your supabase/config.toml: [functions.keyring-signup] verify_jwt = false
+// (Database Webhooks carry no user JWT).
 Deno.serve(async (req) => {
   const secret = Deno.env.get("KEYRING_SECRET_KEY");
   const baseUrl = Deno.env.get("KEYRING_URL");
-  const baseRole = Deno.env.get("KEYRING_BASE_ROLE") ?? "app_user";
-  if (!secret || !baseUrl) {
-    return new Response(JSON.stringify({ error: "Missing KEYRING_SECRET_KEY / KEYRING_URL" }), {
+  const shared = Deno.env.get("SIGNUP_SHARED_SECRET");
+  if (!secret || !baseUrl || !shared) {
+    return new Response(JSON.stringify({ error: "Missing KEYRING_SECRET_KEY / KEYRING_URL / SIGNUP_SHARED_SECRET" }), {
       status: 500, headers: { "Content-Type": "application/json" },
+    });
+  }
+  if (req.headers.get("X-Signup-Key") !== shared) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { "Content-Type": "application/json" },
     });
   }
 
@@ -28,22 +40,40 @@ Deno.serve(async (req) => {
     });
   }
 
-  const res = await fetch(`${baseUrl}/api/v1/grants`, {
+  const res = await fetch(`${baseUrl}/api/v1/subjects/provision`, {
     method: "POST",
     headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ role: baseRole, subject, display_name: record?.email ?? undefined }),
+    body: JSON.stringify({ subject, display_name: record?.email ?? undefined }),
   });
   if (!res.ok) {
     const text = await res.text();
-    return new Response(JSON.stringify({ error: `Keyring grant failed: ${res.status} ${text}` }), {
+    // 409 no_default_role: operator hasn't picked one yet — user holds
+    // nothing (fail-closed); reconcile heals them once a default is set.
+    return new Response(JSON.stringify({ error: `Keyring provision failed: ${res.status} ${text}` }), {
       status: 502, headers: { "Content-Type": "application/json" },
     });
   }
-  return new Response(JSON.stringify({ ok: true, subject, role: baseRole }), {
+  const provisioned = await res.json() as { role: string; granted: boolean };
+
+  // Provision log (see schema.sql: keyring.provision_log). The nightly
+  // reconcile provisions auth users ABSENT from this table — never ones
+  // present, so deliberately revoked users stay revoked.
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (supabaseUrl && serviceKey) {
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.8");
+    const admin = createClient(supabaseUrl, serviceKey);
+    await admin.schema("keyring").from("provision_log").upsert(
+      { subject_id: subject, role_slug: provisioned.role },
+      { onConflict: "subject_id" },
+    );
+  }
+
+  return new Response(JSON.stringify({ ok: true, subject, role: provisioned.role, granted: provisioned.granted }), {
     headers: { "Content-Type": "application/json" },
   });
 });
 
 // Alternative (zero plumbing): skip this function and grant lazily on first
 // authenticated request from your own server:
-//   await keyring.grantRole({ role: "app_user", subject: user.id, displayName: user.email });
+//   await keyring.provisionSubject({ subject: user.id, displayName: user.email });

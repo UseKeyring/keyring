@@ -77,6 +77,20 @@ Authorization: Bearer kr_sk_live_…
 
 Response: `{ "subject": "user_123", "roles": ["teacher"], "permissions": ["records.insert"] }`. Unknown subject → empty arrays (not 404). SDK: `keyring.getSubjectAccess(subject)`.
 
+## POST /api/v1/subjects/provision
+
+Secret, scope `grants.write`. Grant the workspace **default role** (Settings → Default role) to a subject — auto-provisioned, idempotent. No role slug in the request: the server resolves it, so the caller can never choose or escalate roles.
+
+```http
+POST /api/v1/subjects/provision
+Authorization: Bearer kr_sk_live_…
+Content-Type: application/json
+
+{ "subject": "user_123", "display_name": "carol@example.com" }
+```
+
+Response: `{ "subject": "user_123", "role": "player", "granted": true }` (`granted: false` when already held). No default configured → `409 no_default_role` (fail-closed). SDK: `keyring.provisionSubject({ subject, displayName })`.
+
 ## GET /api/v1/webhooks · POST /api/v1/webhooks · DELETE /api/v1/webhooks
 
 Outbound mirror feed. Secret key: list needs `webhooks.read`, create/delete need `webhooks.write`.

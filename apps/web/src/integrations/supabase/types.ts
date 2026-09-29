@@ -331,6 +331,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           created_by: string | null
+          default_role_id: string | null
           id: string
           name: string
           slug: string
@@ -343,6 +344,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           created_by?: string | null
+          default_role_id?: string | null
           id?: string
           name: string
           slug: string
@@ -355,6 +357,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           created_by?: string | null
+          default_role_id?: string | null
           id?: string
           name?: string
           slug?: string
@@ -899,6 +902,10 @@ export type Database = {
       }
       api_get_subject_access: {
         Args: { _hash: string; _subject: string }
+        Returns: Json
+      }
+      api_provision_subject: {
+        Args: { _hash: string; _subject: string; _display_name?: string | null }
         Returns: Json
       }
       api_create_webhook_endpoint: {

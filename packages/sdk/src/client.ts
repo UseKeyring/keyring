@@ -15,6 +15,8 @@ import type {
   GrantResult,
   KeyringOptions,
   Permission,
+  ProvisionSubjectInput,
+  ProvisionSubjectResult,
   ReplaceRoleInput,
   RevokeInput,
   RevokeResult,
@@ -164,6 +166,24 @@ export class Keyring {
             : (input.expiresAt ?? undefined),
         ttl_seconds: input.ttlSeconds,
         condition: input.condition,
+      },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+  }
+
+  /** Provision a subject into the workspace DEFAULT role. No role slug — the
+   *  server resolves it. Idempotent (`granted: false` when already held). */
+  async provisionSubject(input: ProvisionSubjectInput): Promise<ProvisionSubjectResult> {
+    requireSecretKey(this.apiKey, "provision subjects");
+    return apiRequest<ProvisionSubjectResult>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/subjects/provision",
+      method: "POST",
+      body: {
+        subject: input.subject,
+        display_name: input.displayName,
       },
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,

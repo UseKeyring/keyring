@@ -32,6 +32,7 @@ import {
 } from "./org-fields";
 import { ApiKeysSection } from "./api-keys";
 import { BackupsSection } from "./backups";
+import { DefaultRoleSection } from "./default-role";
 import { TelemetrySection } from "./telemetry";
 import { WebhooksSection } from "./webhooks";
 import { SettingsSkeleton } from "@keyring/ui/components/skeletons";
@@ -250,6 +251,7 @@ export default function SettingsPage() {
         <>
           <EditOrganization key={org.data.id} />
           <ApiKeysSection />
+          <DefaultRoleSection />
           <WebhooksSection />
           <TelemetrySection />
           <BackupsSection />

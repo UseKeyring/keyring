@@ -30,6 +30,20 @@ export type GrantResult = {
   condition?: AbacCondition | null;
 };
 
+/** Provision a subject into the workspace DEFAULT role. No role slug — the
+ *  server resolves organizations.default_role_id. Idempotent. */
+export type ProvisionSubjectInput = {
+  subject: string;
+  displayName?: string;
+};
+
+export type ProvisionSubjectResult = {
+  subject: string;
+  role: string;
+  /** False when the subject already held the default (idempotent re-call). */
+  granted: boolean;
+};
+
 export type SetSubjectAttrsResult = {
   ok: true;
   subject: string;

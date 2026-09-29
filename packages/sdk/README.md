@@ -142,6 +142,7 @@ and run on the server. Publishable keys (`kr_pk_…`) can only call `check()` /
 | `setSubjectAttrs({ subject, attrs, displayName? })` | Secret | `POST /api/v1/subjects` — upsert (merge) attrs for ABAC conditions |
 | `track(subject, permission, { allowed?, context? })` | Secret (`telemetry.write`) | `POST /api/v1/events` — manual telemetry; `check()` auto-logs |
 | `getSubjectAccess(subject)` | Secret (`check`) | `GET /api/v1/subjects/access?subject=…` — snapshot `{ roles, permissions }` for mirror backfill/reconcile |
+| `provisionSubject({ subject, displayName? })` | Secret (`grants.write`) | `POST /api/v1/subjects/provision` — grants the workspace default role, no slug needed |
 | `createWebhook({ name, url, secret?, events? })` | Secret (`webhooks.write`) | `POST /api/v1/webhooks` — omit `secret` to have the server mint `kr_ws_live_…`, returned once in `CreateWebhookResult.secret` |
 | `listWebhooks()` | Secret (`webhooks.read`) | `GET /api/v1/webhooks` → `WebhookEndpoint[]` |
 | `deleteWebhook(id)` | Secret (`webhooks.write`) | `DELETE /api/v1/webhooks` |

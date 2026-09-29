@@ -26,6 +26,8 @@ export type {
   KeyKind,
   KeyringOptions,
   Permission,
+  ProvisionSubjectInput,
+  ProvisionSubjectResult,
   ReplaceRoleInput,
   RevokeInput,
   RevokeResult,

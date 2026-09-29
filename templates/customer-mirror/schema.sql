@@ -26,6 +26,15 @@ create index if not exists keyring_access_subject_role_idx
 -- IMMUTABLE, so Postgres rejects it in index predicates (42P17). Expiry is
 -- filtered at query time inside keyring.has()/can() instead.
 
+-- Provision log: written by signup-sync.ts on success. The nightly reconcile
+-- provisions auth users ABSENT from this table — never present ones, so
+-- deliberately revoked users stay revoked. Service_role only, like access.
+create table if not exists keyring.provision_log (
+  subject_id text primary key,
+  role_slug text not null,
+  provisioned_at timestamptz not null default now()
+);
+
 -- ── Supabase helper: role check ─────────────────────────────────────────────
 -- Usage:  create policy "teachers insert records" on public.records
 --         for insert to authenticated with check (keyring.has('teacher'));

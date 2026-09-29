@@ -12,6 +12,7 @@ export type Organization = {
   avatar_url: string | null;
   website: string | null;
   support_email: string | null;
+  default_role_id: string | null;
   created_by: string | null;
   created_at: string;
   telemetry_enabled: boolean;
