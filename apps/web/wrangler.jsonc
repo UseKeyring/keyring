@@ -20,6 +20,7 @@
   ],
   // Runtime vars for /api/agent (non-sensitive; the key itself is a secret).
   "vars": {
+    "APP_URL": "https://usekeyring.dev",
     "AGENT_AI_BASE_URL": "https://generativelanguage.googleapis.com/v1beta/openai",
     "AGENT_AI_MODEL": "gemini-3.6-flash"
   },

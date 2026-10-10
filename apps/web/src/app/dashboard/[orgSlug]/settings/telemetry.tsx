@@ -98,7 +98,7 @@ export function TelemetrySection() {
                   disabled={!manageable || saving}
                   onClick={() => void update({ telemetry_subject_mode: m })}
                   className={`type-body-sm px-3 py-1.5 capitalize disabled:opacity-50 ${
-                    active ? "bg-ink text-white" : "text-ink-muted hover:text-ink"
+                    active ? "bg-ink text-canvas" : "text-ink-muted hover:text-ink"
                   }`}
                 >
                   {m}

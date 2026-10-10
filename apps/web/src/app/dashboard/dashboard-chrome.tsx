@@ -28,11 +28,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from "@keyring/ui/components/sidebar";
+import { cn } from "@keyring/ui/lib/utils";
 import { SolarIcon } from "@keyring/ui/components/solar-icon";
 import { Spotlight, SpotlightButton } from "./spotlight";
 import {
@@ -71,17 +74,36 @@ function buildNav(base: string): { overview: NavEntry; sections: NavSection[] } 
         items: [
           { to: `${base}/telemetry`, label: "Telemetry", icon: "activity", read: "telemetry.read" },
           { to: `${base}/audit`, label: "Activity", icon: "activity", read: "audit.read" },
-          { to: `${base}/settings`, label: "Settings", icon: "settings" },
+          {
+            to: `${base}/settings`,
+            label: "Settings",
+            icon: "settings",
+            subs: [
+              { to: `${base}/settings`, label: "General", exact: true },
+              { to: `${base}/settings/api-keys`, label: "API keys" },
+              { to: `${base}/settings/webhooks`, label: "Webhooks" },
+              { to: `${base}/settings/integrations`, label: "Integrations" },
+              { to: `${base}/settings/telemetry`, label: "Telemetry" },
+            ],
+          },
         ],
       },
     ],
   };
 }
 
+/** Polar-style active matching: exact links match only themselves,
+ *  prefix links match themselves + any deeper path. */
+function isLinkActive(pathname: string, to: string, exact?: boolean): boolean {
+  if (exact) return pathname === to;
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
 function NavItem({ item }: { item: NavEntry }) {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
-  const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+  const active = isLinkActive(pathname, item.to, item.exact);
+  const subs = item.subs ?? [];
 
   return (
     <SidebarMenuItem>
@@ -96,6 +118,31 @@ function NavItem({ item }: { item: NavEntry }) {
           }}
         />
       </SidebarMenuButton>
+      {subs.length > 0 && active && (
+        <SidebarMenuSub className="my-2 gap-y-2">
+          {subs.map((sub) => {
+            const subActive = isLinkActive(pathname, sub.to, sub.exact);
+            return (
+              <SidebarMenuSubItem key={sub.to}>
+                <Link
+                  prefetch
+                  href={sub.to}
+                  aria-current={subActive ? "page" : undefined}
+                  onClick={() => {
+                    if (isMobile) setOpenMobile(false);
+                  }}
+                  className={cn(
+                    "ml-4 inline-flex flex-row items-center gap-x-2 text-sm font-medium transition-colors hover:text-ink",
+                    subActive ? "text-ink" : "text-ink-muted",
+                  )}
+                >
+                  <span className="relative">{sub.label}</span>
+                </Link>
+              </SidebarMenuSubItem>
+            );
+          })}
+        </SidebarMenuSub>
+      )}
     </SidebarMenuItem>
   );
 }
@@ -190,7 +237,15 @@ function ConsoleSidebar() {
   // While access resolves, show everything to avoid nav flicker; entries
   // the viewer may not read stay reachable but render their own deny panel.
   const visible = (items: NavEntry[]) =>
-    accessLoading ? items : items.filter((i) => !i.read || can(i.read));
+    accessLoading
+      ? items
+      : items
+          .filter((i) => !i.read || can(i.read))
+          .map((i) =>
+            i.subs
+              ? { ...i, subs: i.subs.filter((s) => !s.read || can(s.read)) }
+              : i,
+          );
 
   return (
     <Sidebar variant="inset" collapsible="icon">

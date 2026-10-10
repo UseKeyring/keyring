@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { hashApiKey } from "@/lib/api-keys";
 import {
   bearerHash,
@@ -38,11 +39,42 @@ const isValidProjectRef = (ref: unknown): ref is string =>
   typeof ref === "string" && /^[a-z]{20}$/.test(ref);
 
 /*
+ * KEYRING_URL written into the customer's function secrets must be the
+ * publicly-reachable origin of this console. Explicit server config wins,
+ * then the public build-time URL, then the origin of this very request
+ * (correct for production, previews and self-hosters alike).
+ */
+const resolveAppUrl = (req: Request): string => {
+  const trim = (s: string) => s.replace(/\/+$/, "");
+  const configured = process.env["APP_URL"] ?? process.env["NEXT_PUBLIC_APP_URL"];
+  if (configured?.trim()) return trim(configured.trim());
+  try {
+    return trim(new URL(req.url).origin);
+  } catch {
+    return "https://usekeyring.dev";
+  }
+};
+
+type SupaClient = NonNullable<ReturnType<typeof publicClient>>;
+
+type Ctx = {
+  supabase: SupaClient;
+  callerHash: string;
+  projectRef: string;
+  userToken: string;
+  appUrl: string;
+};
+
+/*
  * POST /api/v1/integrations/supabase/verify { session_id, project_ref, code }
  * Step 2: consume the session (single-use), verify the pasted code with
- * Supabase, decrypt the short-lived user token, and run the full mirror
- * orchestration with it. The token is held in memory for this call only —
- * never persisted. Secret key, scope `integrations.write`.
+ * Supabase, and return 202 immediately — the ~50-call mirror orchestration
+ * (SQL files statement-by-statement, two function deploys, secrets) runs in
+ * the background via after() and reports progress into supabase_integrations,
+ * which the console polls. A single request would blow past the platform
+ * request timeout (previously observed as a 502 at ~66s).
+ * The token is held in memory for this run only — never persisted.
+ * Secret key, scope `integrations.write`.
  */
 export async function POST(req: Request) {
   const raw = bearerHash(req);
@@ -70,6 +102,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Expected project_ref like zyqkxert…" }, { status: 400 });
   }
 
+  const appUrl = resolveAppUrl(req);
   const callerHash = await hashApiKey(raw);
   const consumed = (await supabase.rpc("api_integration_session_consume", {
     _hash: callerHash,
@@ -82,8 +115,69 @@ export async function POST(req: Request) {
     );
   }
 
-  const steps: MgmtStep[] = [];
-  const record = async (status: "active" | "failed") => {
+  // 0. Verify code → short-lived user token (memory only, never stored).
+  let userToken: string;
+  try {
+    const session = await fetchLoginSession(SUPABASE_API_HOST, sessionId, code);
+    userToken = await decryptLinkToken(consumed.data.ecdh_private_hex, session);
+  } catch (e) {
+    return Response.json(
+      { error: e instanceof Error ? e.message : String(e), step: "supabase_login" },
+      { status: 500 },
+    );
+  }
+
+  // 1. Project access (fast) — fail loudly before going async.
+  let projectName = projectRef;
+  try {
+    const project = await mgmtGetProject(userToken, projectRef);
+    projectName = project.name;
+  } catch (e) {
+    return Response.json(
+      { error: e instanceof Error ? e.message : String(e), step: "project" },
+      { status: 500 },
+    );
+  }
+
+  const initial: MgmtStep[] = [{ step: "project", ok: true, detail: projectName }];
+  await supabase.rpc("api_integration_upsert", {
+    _hash: callerHash,
+    _project_ref: projectRef,
+    _status: "pending",
+    _steps: initial as never,
+  });
+
+  const ctx: Ctx = { supabase, callerHash, projectRef, userToken, appUrl };
+  try {
+    // Background the slow orchestration; the console polls the row below.
+    after(() => runOrchestration(ctx));
+  } catch {
+    // `after` unavailable (older runtime) — fall back to inline so the
+    // connect still attempts, even if it risks the request timeout.
+    const result = await runOrchestration(ctx);
+    return Response.json(result);
+  }
+  return Response.json({ started: true, project_ref: projectRef }, { status: 202 });
+}
+
+/** Slow orchestration (~50 Supabase management calls). Never throws — every
+ *  failure is recorded into supabase_integrations for the polling console. */
+async function runOrchestration(ctx: Ctx): Promise<{ ok: boolean; steps: MgmtStep[] }> {
+  const { supabase, callerHash, projectRef, userToken, appUrl } = ctx;
+  const steps: MgmtStep[] = [{ step: "project", ok: true }];
+  try {
+    const { data } = (await supabase.rpc("api_integration_upsert", {
+      _hash: callerHash,
+      _project_ref: projectRef,
+      _status: "pending",
+      _steps: steps as never,
+    })) as { data: unknown };
+    void data;
+  } catch {
+    /* status display is best-effort */
+  }
+
+  const record = async (status: "pending" | "active" | "failed") => {
     try {
       await supabase.rpc("api_integration_upsert", {
         _hash: callerHash,
@@ -92,31 +186,14 @@ export async function POST(req: Request) {
         _steps: steps as never,
       });
     } catch {
-      /* status display is best-effort; the steps payload below is the truth */
+      /* the steps payload in the final inline response is the truth */
     }
   };
   const fail = async (step: string, detail: string) => {
     steps.push({ step, ok: false, detail });
     await record("failed");
-    return Response.json({ ok: false, steps }, { status: 502 });
+    return { ok: false, steps };
   };
-
-  // 0. Verify code → short-lived user token (memory only, never stored).
-  let userToken: string;
-  try {
-    const session = await fetchLoginSession(SUPABASE_API_HOST, sessionId, code);
-    userToken = await decryptLinkToken(consumed.data.ecdh_private_hex, session);
-  } catch (e) {
-    return fail("supabase_login", e instanceof Error ? e.message : String(e));
-  }
-
-  // 1. Project access.
-  try {
-    const project = await mgmtGetProject(userToken, projectRef);
-    steps.push({ step: "project", ok: true, detail: project.name });
-  } catch (e) {
-    return fail("project", e instanceof Error ? e.message : String(e));
-  }
 
   // 2. pg_net (best-effort: the signup trigger degrades to silent no-op without it).
   try {
@@ -129,6 +206,7 @@ export async function POST(req: Request) {
       detail: `${e instanceof Error ? e.message : String(e)} — continuing; enable pg_net in Dashboard → Database → Extensions or signup sync stays dormant`,
     });
   }
+  await record("pending");
 
   // 3 + 4. Mirror schema + signup trigger (shared secret generated here).
   const signupSecret = randomSharedSecret();
@@ -145,6 +223,7 @@ export async function POST(req: Request) {
     } catch (e) {
       return fail(step, e instanceof Error ? e.message : String(e));
     }
+    await record("pending");
   }
 
   // 5. Expose the keyring schema (preserve whatever is already exposed).
@@ -159,26 +238,29 @@ export async function POST(req: Request) {
   } catch (e) {
     return fail("postgrest", e instanceof Error ? e.message : String(e));
   }
+  await record("pending");
 
-  // 6. Deploy both edge functions (public HMAC endpoints → no JWT).
+  // 6. Deploy both edge functions in parallel (each bundles server-side and
+  // is the slowest phase). Public HMAC endpoints → no JWT.
   try {
-    await mgmtDeployFunction(userToken, projectRef, "keyring-applier", "keyring-applier", [
-      { name: "index.ts", content: applierTs },
+    const results = await Promise.allSettled([
+      mgmtDeployFunction(userToken, projectRef, "keyring-applier", "keyring-applier", [
+        { name: "index.ts", content: applierTs },
+      ]),
+      mgmtDeployFunction(userToken, projectRef, "keyring-signup", "keyring-signup", [
+        { name: "index.ts", content: signupSyncTs },
+      ]),
     ]);
+    const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+    if (rejected) throw rejected.reason instanceof Error ? rejected.reason : new Error(String(rejected.reason));
     steps.push({ step: "deploy_applier", ok: true });
-    await mgmtDeployFunction(userToken, projectRef, "keyring-signup", "keyring-signup", [
-      { name: "index.ts", content: signupSyncTs },
-    ]);
     steps.push({ step: "deploy_signup", ok: true });
   } catch (e) {
     return fail("deploy_functions", e instanceof Error ? e.message : String(e));
   }
+  await record("pending");
 
-  // 7. Mirror key (server-minted, raw value lives only in this call).
-  const appUrl = process.env["APP_URL"];
-  if (!appUrl) {
-    return fail("mirror_key", "Keyring APP_URL is not configured — cannot set KEYRING_URL");
-  }
+  // 7. Mirror key (server-minted, raw value lives only in this run).
   let mirrorKey: string;
   try {
     mirrorKey = newApiKey("secret");
@@ -195,9 +277,8 @@ export async function POST(req: Request) {
     return fail("mirror_key", e instanceof Error ? e.message : String(e));
   }
 
-  // 8. Webhook endpoint (server-minted secret, returned once, used below).
-  let endpointId = "";
-  let webhookSecret = "";
+  // 8. Webhook endpoint (server-minted secret, used below for function secrets).
+  let webhookSecret: string;
   try {
     const created = (await supabase.rpc("api_create_webhook_endpoint", {
       _hash: callerHash,
@@ -209,9 +290,8 @@ export async function POST(req: Request) {
     if (created.error || !created.data?.id || !created.data?.secret) {
       throw new Error(created.error?.message ?? "endpoint creation failed");
     }
-    endpointId = created.data.id;
     webhookSecret = created.data.secret;
-    steps.push({ step: "webhook_endpoint", ok: true, detail: endpointId });
+    steps.push({ step: "webhook_endpoint", ok: true, detail: created.data.id });
   } catch (e) {
     return fail("webhook_endpoint", e instanceof Error ? e.message : String(e));
   }
@@ -234,5 +314,5 @@ export async function POST(req: Request) {
   }
 
   await record("active");
-  return Response.json({ ok: true, steps, endpoint_id: endpointId, project_ref: projectRef });
+  return { ok: true, steps };
 }

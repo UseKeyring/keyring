@@ -18,6 +18,15 @@ import type { Permission, Role, RolePermission } from "@/hooks/useRbac";
  * the marketing mock and the app cannot drift apart.
  */
 
+export type NavSubEntry = {
+  /** Full path (workspace-prefixed, e.g. /dashboard/acme/settings/api-keys). */
+  to: string;
+  label: string;
+  exact?: boolean;
+  /** Read action required to see this entry; omitted = visible to members. */
+  read?: string;
+};
+
 export type NavEntry = {
   /** Full path (workspace-prefixed by the chrome, e.g. /dashboard/acme/roles). */
   to: string;
@@ -26,6 +35,8 @@ export type NavEntry = {
   icon: SolarName;
   /** Read action required to see this entry; omitted = visible to members. */
   read?: string;
+  /** Polar-style expandable children, rendered under the parent when active. */
+  subs?: NavSubEntry[];
 };
 
 export function ConsoleWordmark() {
@@ -359,7 +370,7 @@ export function OverviewSetupSteps({
       title: "Issue an API Key",
       description: "Create an API key for your backend to evaluate permissions.",
       autoCompleted: keysCount > 0,
-      href: `${base}/settings`,
+      href: `${base}/settings/api-keys`,
       actionText: "Manage API keys",
     },
   ];

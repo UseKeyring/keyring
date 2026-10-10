@@ -184,7 +184,8 @@ CREATE TABLE public.api_keys (
   key_type text NOT NULL DEFAULT 'secret'
     CHECK (key_type IN ('secret', 'publishable')),
   -- Built-in Management API scopes (check, grants.write, roles.read, roles.write,
-  -- actions.read, actions.write, subject_tokens.write, telemetry.read, telemetry.write)
+  -- actions.read, actions.write, subject_tokens.write, telemetry.read, telemetry.write,
+  -- webhooks.read, webhooks.write, integrations.write)
   scopes text[] NOT NULL DEFAULT '{}',
   organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -1101,7 +1102,10 @@ DECLARE
     'actions.write',
     'subject_tokens.write',
     'telemetry.read',
-    'telemetry.write'
+    'telemetry.write',
+    'webhooks.read',
+    'webhooks.write',
+    'integrations.write'
   ];
   _pub text[] := ARRAY['check'];
   _s text;

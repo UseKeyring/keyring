@@ -143,8 +143,8 @@ export default function WebhookEndpointPage() {
   if (!endpoints.isLoading && !endpoint) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-        <Link href={`/dashboard/${params.orgSlug}/settings`} className="type-body-sm text-ink-muted hover:text-ink">
-          ← Back to settings
+        <Link href={`/dashboard/${params.orgSlug}/settings/webhooks`} className="type-body-sm text-ink-muted hover:text-ink">
+          ← Webhooks
         </Link>
         <h1 className="text-2xl font-medium text-ink">Endpoint not found</h1>
         <p className="type-body-sm text-ink-muted">
@@ -214,7 +214,7 @@ export default function WebhookEndpointPage() {
       if (error) throw error;
       await logAction(user.id, "webhook.deleted", endpoint.name || endpoint.url, endpoint.id, orgId);
       toast.success("Endpoint deleted");
-      router.push(`/dashboard/${params.orgSlug}/settings`);
+      router.push(`/dashboard/${params.orgSlug}/settings/webhooks`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete endpoint");
     } finally {
@@ -283,7 +283,7 @@ export default function WebhookEndpointPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
       <div>
-        <Link href={`/dashboard/${params.orgSlug}/settings`} className="type-body-sm text-ink-muted hover:text-ink">
+        <Link href={`/dashboard/${params.orgSlug}/settings/webhooks`} className="type-body-sm text-ink-muted hover:text-ink">
           ← Webhooks
         </Link>
         <div className="mt-2 flex items-start justify-between gap-4">

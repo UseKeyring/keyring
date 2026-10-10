@@ -15,7 +15,7 @@ export default function ErrorPage({ error, reset }: { error: Error; reset: () =>
           <p className="mb-6">We encountered an unexpected error. Please try refreshing the page.</p>
           <button
             onClick={() => reset()}
-            className="px-4 py-2 bg-ink text-white rounded-md hover:bg-ink/80"
+            className="px-4 py-2 bg-ink text-canvas rounded-md hover:bg-ink/80"
           >
             Retry
           </button>

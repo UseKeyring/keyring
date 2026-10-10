@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyAccess } from "@/hooks/useRbac";
 import { useMyOrganization } from "@/hooks/useOrganization";
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client";
+import type { MgmtStep } from "@/lib/supabase-management";
 import { Button } from "@keyring/ui/components/button";
 import { Input } from "@keyring/ui/components/input";
 import { Label } from "@keyring/ui/components/label";
 import { cn } from "@keyring/ui/lib/utils";
-import type { MgmtStep } from "@/lib/supabase-management";
 
 /*
  * One-click Supabase connect (migration 0041): CLI-style device login +
@@ -28,13 +28,14 @@ type IntegrationRow = {
   id: string;
   project_ref: string;
   status: "pending" | "active" | "failed";
+  step_log: MgmtStep[];
   updated_at: string;
 };
 
 type Phase =
   | { name: "idle" }
   | { name: "started"; sessionId: string; loginUrl: string }
-  | { name: "verifying" }
+  | { name: "running"; projectRef: string; startedAt: number }
   | { name: "done"; ok: boolean; steps: MgmtStep[]; projectRef: string };
 
 async function callRoute(url: string, key: string, body: Record<string, unknown>) {
@@ -47,11 +48,37 @@ async function callRoute(url: string, key: string, body: Record<string, unknown>
     error?: string;
     session_id?: string;
     login_url?: string;
+    started?: boolean;
+    project_ref?: string;
     ok?: boolean;
     steps?: MgmtStep[];
   } | null;
   if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
   return data ?? {};
+}
+
+function StepsList({ steps }: { steps: MgmtStep[] }) {
+  if (steps.length === 0) {
+    return <p className="type-body-sm text-ink-muted">No steps reported yet.</p>;
+  }
+  return (
+    <>
+      {steps.map((s) => (
+        <div key={s.step} className="flex items-start gap-3 rounded-2xl border border-hairline px-4 py-2">
+          <span
+            className={cn(
+              "mt-1 inline-block h-2 w-2 shrink-0 rounded-full",
+              s.ok ? "bg-emerald-500" : "bg-red-500",
+            )}
+          />
+          <div className="min-w-0">
+            <p className="type-mono text-sm">{s.step}</p>
+            {s.detail && <p className="type-body-sm break-words text-ink-muted">{s.detail}</p>}
+          </div>
+        </div>
+      ))}
+    </>
+  );
 }
 
 export function SupabaseConnectSection() {
@@ -72,13 +99,18 @@ export function SupabaseConnectSection() {
     queryKey: ["supabase_integrations", orgId],
     enabled: !!orgId,
     placeholderData: (prev) => prev,
+    // While a connect runs in the background (202 + after()), poll the row
+    // so steps stream in live.
+    refetchInterval: phase.name === "running" ? 3000 : false,
     queryFn: async (): Promise<IntegrationRow[]> => {
       const { data, error } = await getSupabaseBrowserClient()
         .from("supabase_integrations")
-        .select("id,project_ref,status,updated_at")
+        .select("id,project_ref,status,step_log,updated_at")
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as IntegrationRow[];
+      return ((data ?? []) as Array<Omit<IntegrationRow, "step_log"> & { step_log: unknown }>).map(
+        (row) => ({ ...row, step_log: Array.isArray(row.step_log) ? (row.step_log as MgmtStep[]) : [] }),
+      );
     },
   });
 
@@ -114,26 +146,60 @@ export function SupabaseConnectSection() {
       toast.error("Paste the verification code from Supabase");
       return;
     }
-    setPhase({ name: "verifying" });
+    const sessionId = phase.sessionId;
+    const ref = projectRef.trim();
+    setBusy(true);
     try {
       const data = await callRoute(VERIFY_URL, apiKey.trim(), {
-        session_id: phase.sessionId,
-        project_ref: projectRef.trim(),
+        session_id: sessionId,
+        project_ref: ref,
         code: code.trim(),
       });
-      const steps = data.steps ?? [];
+      // Background path (202): orchestration continues server-side, the row
+      // below streams progress. Inline fallback: final result already here.
+      if (data.started === true) {
+        setCode("");
+        setPhase({ name: "running", projectRef: ref, startedAt: Date.now() });
+        qc.invalidateQueries({ queryKey: ["supabase_integrations", orgId] });
+        return;
+      }
+      const steps = Array.isArray(data.steps) ? (data.steps as MgmtStep[]) : [];
       const ok = data.ok === true;
-      setPhase({ name: "done", ok, steps, projectRef: projectRef.trim() });
+      setPhase({ name: "done", ok, steps, projectRef: ref });
       setApiKey("");
       setCode("");
       if (ok) toast.success("Supabase connected — mirror is live");
       else toast.error("Connect finished with failures — see steps below");
       refresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Verification failed");
+      // Session is single-use and already consumed — a retry needs a fresh login.
+      toast.error(e instanceof Error ? e.message : "Verification failed — start a new connect");
       setPhase({ name: "idle" });
+    } finally {
+      setBusy(false);
     }
   };
+
+  // Background-run watcher: the verify route returns 202 fast and finishes
+  // via after(); the integration row flips pending → active/failed with the
+  // step log. 15-minute cap, then hand control back (the row keeps its state).
+  useEffect(() => {
+    if (phase.name !== "running") return;
+    const row = (integrations.data ?? []).find((r) => r.project_ref === phase.projectRef);
+    if (row?.status === "active" || row?.status === "failed") {
+      const ok = row.status === "active";
+      setPhase({ name: "done", ok, steps: row.step_log ?? [], projectRef: phase.projectRef });
+      setApiKey("");
+      if (ok) toast.success("Supabase connected — mirror is live");
+      else toast.error("Connect finished with failures — see steps below");
+      qc.invalidateQueries({ queryKey: ["webhook_endpoints", orgId] });
+      return;
+    }
+    if (Date.now() - phase.startedAt > 15 * 60 * 1000) {
+      toast.error("Still no result after 15 minutes — check the row above, or retry");
+      setPhase({ name: "idle" });
+    }
+  }, [phase, integrations.data, orgId, qc]);
 
   const disconnect = async (id: string, ref: string) => {
     try {
@@ -152,11 +218,12 @@ export function SupabaseConnectSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="type-body-lg font-medium text-ink">Supabase connect</h2>
+        <h2 className="type-body-lg font-medium text-ink">Integrations</h2>
         <p className="type-body-sm mt-1 text-ink-muted">
-          One click wires the whole mirror: schema, triggers, exposed schemas, both edge
-          functions, secrets, and the webhook endpoint. Uses a Supabase login link (same
-          flow as the CLI) — no tokens pasted, nothing stored.
+          Connect external services. Supabase one-click wires the whole mirror:
+          schema, triggers, exposed schemas, both edge functions, secrets, and
+          the webhook endpoint. Uses a Supabase login link (same flow as the
+          CLI) — no tokens pasted, nothing stored.
         </p>
       </div>
 
@@ -192,7 +259,7 @@ export function SupabaseConnectSection() {
         </div>
       )}
 
-      {manageable && phase.name !== "done" && (
+      {manageable && (phase.name === "idle" || phase.name === "started") && (
         <div className="flex flex-col gap-y-4">
           {phase.name === "idle" && (
             <>
@@ -226,19 +293,19 @@ export function SupabaseConnectSection() {
               </div>
             </>
           )}
-          {(phase.name === "started" || phase.name === "verifying") && (
+          {phase.name === "started" && (
             <>
               <div className="rounded-2xl border border-hairline p-4">
                 <p className="type-body-sm text-ink">
                   Open this link, approve the login, then paste the verification code:
                 </p>
                 <a
-                  href={phase.name === "started" ? phase.loginUrl : "#"}
+                  href={phase.loginUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="type-mono mt-2 block break-all text-sm text-blue-400 underline"
                 >
-                  {phase.name === "started" ? phase.loginUrl : "…"}
+                  {phase.loginUrl}
                 </a>
               </div>
               <div className="flex flex-col gap-1">
@@ -251,12 +318,26 @@ export function SupabaseConnectSection() {
                 />
               </div>
               <div>
-                <Button disabled={phase.name === "verifying"} onClick={() => void verify()}>
-                  {phase.name === "verifying" ? "Connecting — wiring the mirror…" : "Verify & connect"}
+                <Button disabled={busy} onClick={() => void verify()}>
+                  {busy ? "Verifying…" : "Verify & connect"}
                 </Button>
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {manageable && phase.name === "running" && (
+        <div className="flex flex-col gap-2">
+          <p className="type-body-sm text-ink">
+            Wiring the mirror on {phase.projectRef}… this takes a couple of minutes.
+            You can leave this page — progress is saved on the integration row above.
+          </p>
+          <StepsList
+            steps={
+              (integrations.data ?? []).find((r) => r.project_ref === phase.projectRef)?.step_log ?? []
+            }
+          />
         </div>
       )}
 
@@ -267,20 +348,7 @@ export function SupabaseConnectSection() {
               ? `Connected ${phase.projectRef} — test with a throwaway signup.`
               : `Connect to ${phase.projectRef} finished with failures:`}
           </p>
-          {phase.steps.map((s) => (
-            <div key={s.step} className="flex items-start gap-3 rounded-2xl border border-hairline px-4 py-2">
-              <span
-                className={cn(
-                  "mt-1 inline-block h-2 w-2 shrink-0 rounded-full",
-                  s.ok ? "bg-emerald-500" : "bg-red-500",
-                )}
-              />
-              <div className="min-w-0">
-                <p className="type-mono text-sm">{s.step}</p>
-                {s.detail && <p className="type-body-sm break-words text-ink-muted">{s.detail}</p>}
-              </div>
-            </div>
-          ))}
+          <StepsList steps={phase.steps} />
           <div>
             <Button variant="secondary" onClick={() => setPhase({ name: "idle" })}>
               Connect another project

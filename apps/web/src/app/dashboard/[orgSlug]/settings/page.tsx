@@ -30,12 +30,8 @@ import {
   orgDraftFromOrg,
   type OrgDraft,
 } from "./org-fields";
-import { ApiKeysSection } from "./api-keys";
 import { BackupsSection } from "./backups";
 import { DefaultRoleSection } from "./default-role";
-import { SupabaseConnectSection } from "./supabase-connect";
-import { TelemetrySection } from "./telemetry";
-import { WebhooksSection } from "./webhooks";
 import { SettingsSkeleton } from "@keyring/ui/components/skeletons";
 
 
@@ -235,10 +231,10 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-medium whitespace-nowrap text-ink">Workspace settings</h1>
+        <h1 className="text-2xl font-medium whitespace-nowrap text-ink">General</h1>
         <p className="type-body-sm mt-1 text-ink-muted">
-          Workspace identity, API keys and danger zone. Your personal account lives
-          under account settings.
+          Workspace identity, defaults and danger zone. API keys, webhooks,
+          integrations and telemetry live in their own settings pages.
         </p>
       </div>
 
@@ -251,11 +247,7 @@ export default function SettingsPage() {
       ) : org.data ? (
         <>
           <EditOrganization key={org.data.id} />
-          <ApiKeysSection />
           <DefaultRoleSection />
-          <SupabaseConnectSection />
-          <WebhooksSection />
-          <TelemetrySection />
           <BackupsSection />
           <DangerZone />
         </>
