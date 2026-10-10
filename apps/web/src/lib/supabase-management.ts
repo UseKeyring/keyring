@@ -51,6 +51,31 @@ export async function mgmtGetProject(token: string, ref: string): Promise<{ name
   return { name: typeof name === "string" ? name : ref };
 }
 
+export type SupabaseProject = { ref: string; name: string };
+
+/** List all projects the token can see (for the post-login project picker). */
+export async function mgmtListProjects(token: string): Promise<SupabaseProject[]> {
+  const { status, json, text } = await mgmt(token, `/v1/projects`);
+  if (status !== 200) throw apiError("list projects", status, json, text);
+  const list = Array.isArray(json) ? json : [];
+  return list
+    .map((p) => {
+      const row = p as { id?: unknown; ref?: unknown; reference?: unknown; name?: unknown } | null;
+      const ref =
+        typeof row?.id === "string"
+          ? row.id
+          : typeof row?.ref === "string"
+            ? row.ref
+            : typeof row?.reference === "string"
+              ? row.reference
+              : "";
+      const name = typeof row?.name === "string" && row.name ? row.name : ref;
+      return { ref, name };
+    })
+    .filter((p) => p.ref.length > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /** One SQL statement per call. Throws with the statement index on failure. */
 export async function mgmtRunQuery(token: string, ref: string, query: string): Promise<void> {
   const { status, json, text } = await mgmt(token, `/v1/projects/${ref}/database/query`, {

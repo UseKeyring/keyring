@@ -8,7 +8,6 @@ import {
   resolveApiKey,
   unauthorized,
 } from "../../../auth";
-import { decryptLinkToken, fetchLoginSession, SUPABASE_API_HOST } from "@/lib/supabase-link-crypto";
 import {
   applierTs,
   mirrorSchemaSql,
@@ -34,9 +33,6 @@ const randomSharedSecret = (): string => {
   for (const b of bytes) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 };
-
-const isValidProjectRef = (ref: unknown): ref is string =>
-  typeof ref === "string" && /^[a-z]{20}$/.test(ref);
 
 /*
  * KEYRING_URL written into the customer's function secrets must be the
@@ -66,15 +62,15 @@ type Ctx = {
 };
 
 /*
- * POST /api/v1/integrations/supabase/verify { session_id, project_ref, code }
- * Step 2: consume the session (single-use), verify the pasted code with
- * Supabase, and return 202 immediately — the ~50-call mirror orchestration
- * (SQL files statement-by-statement, two function deploys, secrets) runs in
- * the background via after() and reports progress into supabase_integrations,
- * which the console polls. A single request would blow past the platform
- * request timeout (previously observed as a 502 at ~66s).
- * The token is held in memory for this run only — never persisted.
- * Secret key, scope `integrations.write`.
+ * POST /api/v1/integrations/supabase/verify { project_ref, supabase_token }
+ * Step 3 of the connect wizard: wire the mirror on the chosen project.
+ * The Supabase user token comes from the earlier projects step (browser
+ * memory only, never persisted); auth here is the Keyring SECRET key with
+ * scope `integrations.write` (created or pasted in the wizard).
+ *
+ * Returns 202 immediately — the ~50-call mirror orchestration runs in the
+ * background via after() and reports progress into supabase_integrations,
+ * which the console polls.
  */
 export async function POST(req: Request) {
   const raw = bearerHash(req);
@@ -88,46 +84,19 @@ export async function POST(req: Request) {
   if (scopeErr) return scopeErr;
 
   const body = (await req.json().catch(() => null)) as {
-    session_id?: unknown;
     project_ref?: unknown;
-    code?: unknown;
+    supabase_token?: unknown;
   } | null;
-  const sessionId = typeof body?.session_id === "string" ? body.session_id : "";
-  const projectRef = body?.project_ref;
-  const code = typeof body?.code === "string" ? body.code : "";
-  if (!sessionId || !code) {
-    return Response.json({ error: "Expected { session_id, project_ref, code }" }, { status: 400 });
-  }
-  if (!isValidProjectRef(projectRef)) {
-    return Response.json({ error: "Expected project_ref like zyqkxert…" }, { status: 400 });
+  const projectRef = typeof body?.project_ref === "string" ? body.project_ref : "";
+  const userToken = typeof body?.supabase_token === "string" ? body.supabase_token : "";
+  if (!projectRef || !userToken) {
+    return Response.json({ error: "Expected { project_ref, supabase_token }" }, { status: 400 });
   }
 
   const appUrl = resolveAppUrl(req);
   const callerHash = await hashApiKey(raw);
-  const consumed = (await supabase.rpc("api_integration_session_consume", {
-    _hash: callerHash,
-    _session: sessionId,
-  })) as { data: { ecdh_private_hex?: string } | null; error: { message: string } | null };
-  if (consumed.error || !consumed.data?.ecdh_private_hex) {
-    return Response.json(
-      { error: "Unknown or already-used session — start a new connect" },
-      { status: 410 },
-    );
-  }
 
-  // 0. Verify code → short-lived user token (memory only, never stored).
-  let userToken: string;
-  try {
-    const session = await fetchLoginSession(SUPABASE_API_HOST, sessionId, code);
-    userToken = await decryptLinkToken(consumed.data.ecdh_private_hex, session);
-  } catch (e) {
-    return Response.json(
-      { error: e instanceof Error ? e.message : String(e), step: "supabase_login" },
-      { status: 500 },
-    );
-  }
-
-  // 1. Project access (fast) — fail loudly before going async.
+  // Fast project-access check — fail loudly before going async.
   let projectName = projectRef;
   try {
     const project = await mgmtGetProject(userToken, projectRef);

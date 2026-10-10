@@ -987,6 +987,14 @@ export type Database = {
         Args: { _hash: string; _session: string }
         Returns: Json
       }
+      api_integration_session_create_user: {
+        Args: { _session: string; _priv: string }
+        Returns: undefined
+      }
+      api_integration_session_consume_user: {
+        Args: { _session: string }
+        Returns: Json
+      }
       api_integration_upsert: {
         Args: { _hash: string; _project_ref: string; _status: string; _steps?: Json | null }
         Returns: Json
