@@ -1,17 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LandingCta } from "../landing-cta";
-import { SiteFooter } from "../site-footer";
-import { SiteNav } from "../site-nav";
-import { Button } from "@keyring/ui/components/button";
-import { SolarIcon } from "@keyring/ui/components/solar-icon";
 import { isWaitlistEnabled } from "@/lib/waitlist";
+import { AsciiPage, Row, SectionHead, SectionLabel } from "../ascii-shell";
+import { CopyCommand } from "../copy-command";
 
 export const metadata: Metadata = {
   title: "Keyring — Pricing",
   description:
-    "Start free, upgrade when your product grows. Every plan includes the full console.",
+    "Self-host Keyring free forever. Hosted plans are coming soon.",
 };
 
 // Runtime toggle (WAITLIST) needs per-request rendering so the page can
@@ -20,8 +17,8 @@ export const dynamic = "force-dynamic";
 
 /*
  * Pricing tiers are placeholders — adjust numbers, limits and feature gates
- * here. Layout follows the landing (full-bleed 1920 cap, two-tone headline,
- * rounded-2xl pillar cards, inverted middle card).
+ * here. Layout follows the landing's ASCII system (railed rows, shared-border
+ * cells, accent rule on the featured tier).
  */
 
 const TIERS = [
@@ -32,7 +29,8 @@ const TIERS = [
     blurb: "Run Keyring on your own infra. Same console, your bill is zero.",
     cta: "Deploy yourself",
     href: "https://github.com/UseKeyring/keyring",
-    featured: false,
+    featured: true,
+    soon: false,
     features: [
       "Full console — actions, roles, grants",
       "Unlimited workspaces & subjects",
@@ -48,7 +46,8 @@ const TIERS = [
     blurb: "Hosted Keyring for products with real users.",
     cta: "Subscribe to Pro",
     href: "/auth",
-    featured: true,
+    featured: false,
+    soon: true,
     features: [
       "Everything in Self-hosted, plus:",
       "100,000 checks / month — then $2 per extra 100k",
@@ -68,6 +67,7 @@ const TIERS = [
     cta: "Contact sales",
     href: "mailto:hello@keyring.sh",
     featured: false,
+    soon: true,
     features: [
       "Everything in Pro",
       "SSO / SAML",
@@ -110,166 +110,88 @@ export default function PricingPage() {
   // Private beta: no public pricing while the waitlist is on — direct URL
   // entry bounces to /waitlist (middleware enforces this too).
   if (isWaitlistEnabled()) redirect("/waitlist");
-  const waitlist = isWaitlistEnabled();
   return (
-    <main className="min-h-screen bg-canvas">
-      <SiteNav waitlist={waitlist} />
-
-      <div className="px-5 md:px-12">
-        <div className="mx-auto w-full max-w-[1920px]">
-          <section className="flex flex-col gap-12 py-16 md:py-24">
-            <div className="max-w-3xl">
-              <span className="type-mono text-ink-muted">Pricing</span>
-              <h1 className="mt-6 text-[clamp(2.75rem,6vw,4.5rem)] leading-[1.02] font-normal tracking-[-0.025em] text-balance text-ink-navy">
-                Pay for checks,
-                <br />
-                <span className="text-ink-muted">not seats.</span>
-              </h1>
-              <p className="type-body mt-5 max-w-xl text-ink-muted">
-                Self-host free forever — or let us run it from $12 a project.
-                Every plan includes the full console.
-              </p>
-            </div>
-
-            <div className="grid items-stretch gap-4 lg:grid-cols-3">
-              {TIERS.map((t) => (
-                <div
-                  key={t.name}
-                  className={
-                    t.featured
-                      ? "flex flex-col rounded-2xl bg-ink p-8 text-canvas"
-                      : "flex flex-col rounded-2xl bg-pillar p-8"
-                  }
-                >
-                  <div className="flex items-center justify-between">
-                    <h3
-                      className={
-                        t.featured
-                          ? "type-body-lg text-canvas"
-                          : "type-body-lg text-ink-navy"
-                      }
-                    >
-                      {t.name}
-                    </h3>
-                    {t.featured && (
-                      <span className="type-mono rounded-full border border-canvas/20 px-3 py-1 text-canvas">
-                        Most popular
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-6 flex items-baseline gap-2">
-                    <span
-                      className={
-                        t.featured
-                          ? "text-5xl font-extralight tracking-tight text-canvas tabular-nums"
-                          : "text-5xl font-extralight tracking-tight text-ink tabular-nums"
-                      }
-                    >
-                      {t.price}
-                    </span>
-                    <span
-                      className={
-                        t.featured ? "type-body-sm text-canvas/60" : "type-body-sm text-ink-muted"
-                      }
-                    >
-                      {t.period}
-                    </span>
-                  </div>
-                  <p
-                    className={
-                      t.featured
-                        ? "type-body-sm mt-2 text-canvas/60"
-                        : "type-body-sm mt-2 text-ink-muted"
-                    }
-                  >
-                    {t.blurb}
-                  </p>
-                  <div className="mt-6">
-                    {t.featured ? (
-                      <Button
-                        asChild
-                        className="w-full bg-canvas text-ink hover:opacity-85"
-                      >
-                        <a href={t.href}>{t.cta}</a>
-                      </Button>
-                    ) : (
-                      <Button asChild variant="secondary" className="w-full">
-                        <a href={t.href}>{t.cta}</a>
-                      </Button>
-                    )}
-                  </div>
-                  <ul className="mt-8 flex flex-col gap-3">
-                    {t.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2.5">
-                        <SolarIcon
-                          name="check"
-                          className={
-                            t.featured
-                              ? "mt-0.5 h-4 w-4 shrink-0 text-canvas"
-                              : "mt-0.5 h-4 w-4 shrink-0 text-ink"
-                          }
-                        />
-                        <span
-                          className={
-                            t.featured
-                              ? "type-body-sm text-canvas/80"
-                              : "type-body-sm text-ink-navy"
-                          }
-                        >
-                          {f}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-            <p className="type-mono text-ink-muted">
-              All prices in USD. Cancel anytime — your graph stays exportable.
-            </p>
-          </section>
-
-          <section className="border-t border-hairline py-16 md:py-24">
-            <div className="grid gap-8 lg:grid-cols-2">
-              <div className="type-display-md text-ink">FAQ</div>
-              <div>
-                <h2 className="text-[clamp(2rem,4.5vw,3.25rem)] leading-[1.05] font-normal tracking-[-0.02em] text-balance text-ink">
-                  Questions,
-                  <br />
-                  <span className="text-ink-muted">answered.</span>
-                </h2>
-              </div>
-            </div>
-            <div className="mt-12 grid gap-x-12 gap-y-10 md:mt-16 md:grid-cols-2">
-              {FAQS.map((f) => (
-                <div key={f.q}>
-                  <h3 className="type-body-lg text-ink-navy">{f.q}</h3>
-                  <p className="type-body-sm mt-2 max-w-lg text-ink-muted">{f.a}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="flex flex-col items-center gap-6 border-t border-hairline py-16 text-center md:py-24">
-            <h2 className="text-[clamp(2rem,4.5vw,3.25rem)] leading-[1.05] font-normal tracking-[-0.02em] text-balance text-ink">
-              Still deciding?
-              <br />
-              <span className="text-ink-muted">
-                {waitlist ? "Join the waitlist for early access." : "The free tier is fully usable."}
-              </span>
-            </h2>
-            {waitlist ? (
-              <Button asChild size="lg">
-                <Link href="/waitlist">Join the waitlist</Link>
-              </Button>
-            ) : (
-              <LandingCta large />
-            )}
-          </section>
+    <AsciiPage>
+      <Row>
+        <div className="pad" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <SectionLabel n="$">pricing</SectionLabel>
+          <h1 className="display" style={{ fontSize: "clamp(2.5rem, 5vw, 4.2rem)", margin: 0, maxWidth: 900 }}>
+            Free to run. <span className="muted">Hosted is coming soon.</span>
+          </h1>
+          <p className="lede" style={{ margin: 0 }}>
+            The open-source build is the whole product — no gated features, no check quotas. Hosted Keyring is
+            coming soon: same product, our uptime, backups and support.
+          </p>
         </div>
-      </div>
+      </Row>
 
-      <SiteFooter waitlist={waitlist} />
-    </main>
+      <Row>
+        <div className="cells grid lg:grid-cols-3">
+          {TIERS.map((t) => (
+            <div key={t.name} className={`cell${t.featured ? " featured grain" : ""}${t.soon ? " hatch" : ""}`} style={{ display: "flex", flexDirection: "column", padding: "32px 28px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <span className="label fg">{t.name}</span>
+                {t.soon ? <span className="tag" style={{ borderColor: "var(--a-line-strong)", color: "var(--a-muted)" }}>coming soon</span> : <span className="tag">available now</span>}
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 24 }}>
+                <span className={`display${t.soon ? " muted" : ""}`} style={{ fontSize: 52, lineHeight: 1 }}>{t.price}</span>
+                <span className="muted" style={{ fontSize: 12 }}>{t.soon ? `${t.period} · planned` : t.period}</span>
+              </div>
+              <p className="muted" style={{ margin: "12px 0 0", fontSize: 13 }}>{t.blurb}</p>
+              {t.soon ? (
+                <span className="btn block" aria-disabled="true" style={{ marginTop: 24, cursor: "default", color: "var(--a-muted)", borderStyle: "dashed" }}>
+                  Coming soon
+                </span>
+              ) : (
+                <a
+                  href={t.href}
+                  className={`btn block${t.featured ? " primary" : ""}`}
+                  style={{ marginTop: 24 }}
+                  {...(t.href.startsWith("http") ? { target: "_blank", rel: "noreferrer" } : {})}
+                >
+                  {t.cta} →
+                </a>
+              )}
+              <div style={{ borderTop: "1px dashed var(--a-line-strong)", margin: "28px 0 20px" }} />
+              <ul className="plus">
+                {t.features.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="dim" style={{ borderTop: "1px solid var(--a-line)", padding: "16px 28px", fontSize: 12 }}>
+          {"// "}hosted prices are planned and may change before launch. all prices in usd.
+        </div>
+      </Row>
+
+      <Row id="faq">
+        <SectionHead n="?" label="faq" title="Questions," sub="answered." />
+        <div className="cells grid md:grid-cols-2" style={{ borderTop: "1px solid var(--a-line)" }}>
+          {FAQS.map((f) => (
+            <div key={f.q} className="cell" style={{ padding: "26px 28px" }}>
+              <h3 className="display" style={{ fontSize: 19, margin: 0, letterSpacing: "-0.01em" }}>
+                <span className="accent" style={{ fontFamily: "var(--a-font-mono)", fontSize: 13, marginRight: 10 }}>&gt;</span>
+                {f.q}
+              </h3>
+              <p className="muted" style={{ margin: "10px 0 0", fontSize: 13 }}>{f.a}</p>
+            </div>
+          ))}
+        </div>
+      </Row>
+
+      <Row>
+        <div className="grid-bg" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 24, padding: "88px 20px" }}>
+          <h2 className="display" style={{ fontSize: "clamp(2rem, 4vw, 3.2rem)", margin: 0 }}>
+            Hosted is coming. <span className="muted">The free tier is the real thing today.</span>
+          </h2>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
+            <CopyCommand command="npx @usekeyring/cli dev" />
+            <Link className="btn primary" href="/docs/cli">Read the docs →</Link>
+          </div>
+        </div>
+      </Row>
+    </AsciiPage>
   );
 }

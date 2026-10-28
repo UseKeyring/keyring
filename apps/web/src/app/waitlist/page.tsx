@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { SiteWordmark } from "../site-nav";
-import { ThemeToggle } from "../theme-toggle";
-import { WaitlistForm } from "../waitlist-form";
 import { isWaitlistEnabled } from "@/lib/waitlist";
+import { AsciiPage, Row } from "../ascii-shell";
+import { WaitlistIllustration } from "../illustrations";
+import { WaitlistForm } from "../waitlist-form";
 
 export const metadata: Metadata = {
   title: "Join the waitlist — Keyring",
@@ -18,26 +18,17 @@ export const dynamic = "force-dynamic";
 export default function WaitlistPage() {
   if (!isWaitlistEnabled()) redirect("/");
   return (
-    <main className="flex min-h-screen flex-col bg-canvas">
-      <div className="w-full">
-        <nav className="mx-auto flex h-16 w-full max-w-[1920px] items-center justify-between px-5 md:px-12">
-          <SiteWordmark />
-          <ThemeToggle />
-        </nav>
-      </div>
-
-      <div className="flex flex-1 items-center px-5 py-16 md:px-12 md:py-24">
-        <WaitlistForm />
-      </div>
-
-      <div className="w-full border-t border-hairline">
-        <div className="mx-auto flex w-full max-w-[1920px] items-center justify-between px-5 py-8 md:px-12">
-          <SiteWordmark />
-          <p className="type-body-sm text-ink-muted">
-            &copy; Keyring {new Date().getFullYear()}
-          </p>
+    <AsciiPage waitlist>
+      <Row>
+        <div className="cells grid lg:grid-cols-2" style={{ minHeight: "calc(100vh - 64px)" }}>
+          <div className="pad" style={{ display: "flex", alignItems: "center" }}>
+            <WaitlistForm />
+          </div>
+          <div className="grid-bg" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 12px" }}>
+            <WaitlistIllustration />
+          </div>
         </div>
-      </div>
-    </main>
+      </Row>
+    </AsciiPage>
   );
 }
