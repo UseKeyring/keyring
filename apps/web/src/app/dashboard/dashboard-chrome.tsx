@@ -65,6 +65,7 @@ function buildNav(base: string): { overview: NavEntry; sections: NavSection[] } 
         items: [
           { to: `${base}/actions`, label: "Actions", icon: "actions", read: "permissions.read" },
           { to: `${base}/roles`, label: "Roles", icon: "roles", read: "roles.read" },
+          { to: `${base}/spaces`, label: "Spaces", icon: "overview", read: "roles.read" },
           { to: `${base}/members`, label: "Members", icon: "members", read: "members.read" },
           { to: `${base}/users`, label: "Users", icon: "users", read: "users.read" },
         ],

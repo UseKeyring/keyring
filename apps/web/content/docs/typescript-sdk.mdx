@@ -38,7 +38,24 @@ await keyring.check("invoices.refund", { subjectToken, context: { plan: "pro" } 
 await keyring.assert("user_123", "invoices.refund"); // throws ForbiddenError
 ```
 
-Result: `{ subject, permission, allowed }`. `context` is ABAC request context merged with stored subject attrs inside Postgres — context wins.
+Result: `{ subject, permission, space, allowed }`. `context` is ABAC request context merged with stored subject attrs inside Postgres — context wins.
+
+## Spaces
+
+Pass `space` to scope any call to one space (omitted = platform scope):
+
+```ts
+await keyring.createSpace({ slug: "acme", name: "Acme Inc" });
+await keyring.createPermission({ slug: "invoices.refund", name: "Refund", space: "acme" });
+await keyring.createRole({ slug: "support", name: "Support", permissions: ["invoices.refund"], space: "acme" });
+await keyring.grantRole({ role: "support", subject: user.id, space: "acme" });
+
+await keyring.check("user_123", "invoices.refund", { space: "acme" });
+await keyring.getSubjectAccess(user.id, "acme");
+await keyring.deleteSpace("acme"); // cascades to the space's roles, actions, grants
+```
+
+Scopes: `spaces.read` for `listSpaces()`, `spaces.write` for create/delete.
 
 ## Subject tokens
 

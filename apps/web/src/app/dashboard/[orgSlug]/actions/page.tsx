@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { logAction, isCustomerPermission, useMyAccess, usePermissions, type Permission } from "@/hooks/useRbac";
+import { logAction, inScope, isCustomerPermission, useMyAccess, usePermissions, type Permission } from "@/hooks/useRbac";
 import { Button } from "@keyring/ui/components/button";
 import {
   Dialog,
@@ -20,6 +20,7 @@ import { ListSkeleton } from "@keyring/ui/components/skeletons";
 import { SolarIcon } from "@keyring/ui/components/solar-icon";
 import { Tabs, TabsList, TabsTrigger } from "@keyring/ui/components/tabs";
 import { useDashboardBase } from "../../dashboard-chrome";
+import { SpaceScopeSelect, useSpaceScope } from "../space-scope";
 
 export default function ActionsPage() {
   const perms = usePermissions();
@@ -28,6 +29,7 @@ export default function ActionsPage() {
   const qc = useQueryClient();
   const base = useDashboardBase();
   const editable = can("permissions.manage");
+  const { spaceSlug, spaceId, setSpaceSlug } = useSpaceScope();
 
   const [query, setQuery] = useState("");
   const [catFilter, setCatFilter] = useState("All");
@@ -46,7 +48,7 @@ export default function ActionsPage() {
   };
 
   const grouped = (perms.data ?? [])
-    .filter(isCustomerPermission)
+    .filter((p) => isCustomerPermission(p) && inScope(p.space_id, spaceId))
     .reduce<Record<string, Permission[]>>((acc, p) => {
       (acc[p.category] ||= []).push(p);
       return acc;
@@ -85,6 +87,7 @@ export default function ActionsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <SpaceScopeSelect value={spaceSlug} onChange={setSpaceSlug} />
           <Button
             type="button"
             onClick={() => setFiltersOpen(true)}
@@ -97,7 +100,7 @@ export default function ActionsPage() {
           </Button>
           {editable && (
             <Button size="sm" asChild>
-              <Link href={`${base}/actions/new`}>
+              <Link href={spaceSlug ? `${base}/actions/new?space=${spaceSlug}` : `${base}/actions/new`}>
                 <SolarIcon name="plus" className="h-3.5 w-3.5" />
                 <span className="hidden md:inline">New Action</span>
               </Link>

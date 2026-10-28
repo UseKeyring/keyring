@@ -56,6 +56,7 @@ export type Database = {
           organization_id: string
           permission_id: string | null
           permission_slug: string
+          space_id: string | null
           subject_external_id: string
           subject_id: string | null
         }
@@ -70,6 +71,7 @@ export type Database = {
           organization_id: string
           permission_id?: string | null
           permission_slug: string
+          space_id?: string | null
           subject_external_id: string
           subject_id?: string | null
         }
@@ -84,6 +86,7 @@ export type Database = {
           organization_id?: string
           permission_id?: string | null
           permission_slug?: string
+          space_id?: string | null
           subject_external_id?: string
           subject_id?: string | null
         }
@@ -337,6 +340,7 @@ export type Database = {
           organization_id: string | null
           scope: string
           slug: string
+          space_id: string | null
         }
         Insert: {
           category?: string
@@ -348,6 +352,7 @@ export type Database = {
           organization_id?: string | null
           scope?: string
           slug: string
+          space_id?: string | null
         }
         Update: {
           category?: string
@@ -359,6 +364,7 @@ export type Database = {
           organization_id?: string | null
           scope?: string
           slug?: string
+          space_id?: string | null
         }
         Relationships: []
       }
@@ -446,6 +452,7 @@ export type Database = {
           permission_id: string
           organization_id: string | null
           role_id: string
+          space_id: string | null
         }
         Insert: {
           created_at?: string
@@ -453,6 +460,7 @@ export type Database = {
           organization_id?: string | null
           permission_id: string
           role_id: string
+          space_id?: string | null
         }
         Update: {
           created_at?: string
@@ -460,6 +468,7 @@ export type Database = {
           organization_id?: string | null
           permission_id?: string
           role_id?: string
+          space_id?: string | null
         }
         Relationships: [
           {
@@ -488,6 +497,7 @@ export type Database = {
           organization_id: string | null
           scope: string
           slug: string
+          space_id: string | null
         }
         Insert: {
           created_at?: string
@@ -498,6 +508,7 @@ export type Database = {
           organization_id?: string | null
           scope?: string
           slug: string
+          space_id?: string | null
         }
         Update: {
           created_at?: string
@@ -508,8 +519,50 @@ export type Database = {
           organization_id?: string | null
           scope?: string
           slug?: string
+          space_id?: string | null
         }
         Relationships: []
+      }
+      spaces: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          default_role_id: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          default_role_id?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          default_role_id?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spaces_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       member_roles: {
         Row: {
@@ -666,6 +719,7 @@ export type Database = {
           organization_id: string
           role_id: string
           subject_id: string
+          space_id: string | null
           expires_at: string | null
         }
         Insert: {
@@ -675,6 +729,7 @@ export type Database = {
           organization_id: string
           role_id: string
           subject_id: string
+          space_id?: string | null
           expires_at?: string | null
         }
         Update: {
@@ -684,6 +739,7 @@ export type Database = {
           organization_id?: string
           role_id?: string
           subject_id?: string
+          space_id?: string | null
           expires_at?: string | null
         }
         Relationships: [
@@ -917,7 +973,7 @@ export type Database = {
       api_key_meta: { Args: { _hash: string }; Returns: Json }
       api_whoami: { Args: { _hash: string }; Returns: Json }
       api_check: {
-        Args: { _hash: string; _subject: string; _perm: string; _context?: Json }
+        Args: { _hash: string; _subject: string; _perm: string; _context?: Json; _space?: string | null }
         Returns: boolean
       }
       api_set_subject_attrs: {
@@ -931,6 +987,7 @@ export type Database = {
           _perm: string
           _allowed?: boolean | null
           _context?: Json
+          _space?: string | null
         }
         Returns: string
       }
@@ -944,13 +1001,14 @@ export type Database = {
           _expires_at?: string | null
           _ttl_seconds?: number | null
           _condition?: Json | null
+          _space?: string | null
         }
         Returns: boolean
       }
-      purge_expired_grants: { Args: { _hash?: string | null }; Returns: number }
-      api_revoke_grant: { Args: { _hash: string; _role: string; _subject: string }; Returns: boolean }
-      api_list_roles: { Args: { _hash: string }; Returns: Json }
-      api_list_permissions: { Args: { _hash: string }; Returns: Json }
+      purge_expired_grants: { Args: { _hash?: string | null; _space?: string | null }; Returns: number }
+      api_revoke_grant: { Args: { _hash: string; _role: string; _subject: string; _space?: string | null }; Returns: boolean }
+      api_list_roles: { Args: { _hash: string; _space?: string | null }; Returns: Json }
+      api_list_permissions: { Args: { _hash: string; _space?: string | null }; Returns: Json }
       api_create_role: {
         Args: {
           _hash: string
@@ -958,6 +1016,7 @@ export type Database = {
           _name: string
           _description?: string | null
           _permissions?: string[] | null
+          _space?: string | null
         }
         Returns: Json
       }
@@ -968,17 +1027,24 @@ export type Database = {
           _name: string
           _category?: string | null
           _description?: string | null
+          _space?: string | null
         }
         Returns: Json
       }
       api_get_subject_access: {
-        Args: { _hash: string; _subject: string }
+        Args: { _hash: string; _subject: string; _space?: string | null }
         Returns: Json
       }
       api_provision_subject: {
-        Args: { _hash: string; _subject: string; _display_name?: string | null }
+        Args: { _hash: string; _subject: string; _display_name?: string | null; _space?: string | null }
         Returns: Json
       }
+      api_create_space: {
+        Args: { _hash: string; _slug: string; _name: string; _description?: string | null }
+        Returns: Json
+      }
+      api_list_spaces: { Args: { _hash: string }; Returns: Json }
+      api_delete_space: { Args: { _hash: string; _space: string }; Returns: boolean }
       api_integration_session_create: {
         Args: { _hash: string; _session: string; _priv: string }
         Returns: undefined

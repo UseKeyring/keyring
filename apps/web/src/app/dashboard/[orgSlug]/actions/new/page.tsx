@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { logAction, useMyAccess } from "@/hooks/useRbac";
+import { logAction, useMyAccess, useSpaces } from "@/hooks/useRbac";
 import { useMyOrganization } from "@/hooks/useOrganization";
 import { Button } from "@keyring/ui/components/button";
 import { Input } from "@keyring/ui/components/input";
@@ -21,6 +21,13 @@ export default function NewActionPage() {
   const base = useDashboardBase();
   const { orgId } = useMyOrganization();
   const editable = can("permissions.manage");
+  const spaces = useSpaces();
+  const params = useSearchParams();
+
+  // Scope carried from the actions list (?space=<slug>, absent = platform).
+  const spaceSlug = params.get("space")?.trim() || null;
+  const space = (spaces.data ?? []).find((s) => s.slug === spaceSlug) ?? null;
+  const spaceId = space ? space.id : null;
 
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
@@ -39,6 +46,7 @@ export default function NewActionPage() {
       description: description.trim() || null,
       scope: "customer",
       organization_id: orgId,
+      space_id: spaceId,
     });
     setSaving(false);
     if (error) {
@@ -46,8 +54,8 @@ export default function NewActionPage() {
       return;
     }
     if (user) await logAction(user.id, "action.created", slug.trim());
-    toast.success("Action created");
-    router.push(`${base}/actions`);
+    toast.success(space ? `Action created in space ${space.slug}` : "Action created");
+    router.push(spaceSlug ? `${base}/actions?space=${spaceSlug}` : `${base}/actions`);
     router.refresh();
   };
 

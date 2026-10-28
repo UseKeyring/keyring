@@ -246,20 +246,21 @@ async function runOrchestration(ctx: Ctx): Promise<{ ok: boolean; steps: MgmtSte
     return fail("mirror_key", e instanceof Error ? e.message : String(e));
   }
 
-  // 8. Webhook endpoint (server-minted secret, used below for function secrets).
-  let webhookSecret: string;
+  // 8. Webhook endpoint (we mint the secret locally and keep it — the RPC
+  // only returns metadata, never the secret — then write it into the
+  // customer function secrets below).
+  const webhookSecret = newWebhookSecret();
   try {
     const created = (await supabase.rpc("api_create_webhook_endpoint", {
       _hash: callerHash,
       _name: "supabase mirror",
       _url: `https://${projectRef}.supabase.co/functions/v1/keyring-applier`,
-      _secret: newWebhookSecret(),
+      _secret: webhookSecret,
       _events: [],
-    })) as { data: { id?: string; secret?: string } | null; error: { message: string } | null };
-    if (created.error || !created.data?.id || !created.data?.secret) {
+    })) as { data: { id?: string } | null; error: { message: string } | null };
+    if (created.error || !created.data?.id) {
       throw new Error(created.error?.message ?? "endpoint creation failed");
     }
-    webhookSecret = created.data.secret;
     steps.push({ step: "webhook_endpoint", ok: true, detail: created.data.id });
   } catch (e) {
     return fail("webhook_endpoint", e instanceof Error ? e.message : String(e));

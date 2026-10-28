@@ -10,9 +10,10 @@ import {
 } from "../../auth";
 
 /*
- * GET /api/v1/subjects/access?subject=<external_id>
- * Full access snapshot for one subject — backfill + nightly reconcile for
- * customer mirrors (keyring.access). Secret key, scope `check`.
+ * GET /api/v1/subjects/access?subject=<external_id>&space=<slug?>
+ * Full access snapshot for one subject in one scope (omitted = platform
+ * scope) — backfill + nightly reconcile for customer mirrors
+ * (keyring.access). Secret key, scope `check`.
  * Expired grants are excluded (mirror helpers filter them too; rows stay).
  * Unknown subject → empty roles/permissions (not 404) so appliers can
  * reconcile deletions idempotently.
@@ -28,14 +29,22 @@ export async function GET(req: Request) {
   const scopeErr = requireScope(meta, "check");
   if (scopeErr) return scopeErr;
 
-  const subject = new URL(req.url).searchParams.get("subject") ?? "";
+  const params = new URL(req.url).searchParams;
+  const subject = params.get("subject") ?? "";
   if (!subject) return badRequest("Expected ?subject=<external_id>");
+  const space = params.get("space")?.trim() || null;
 
   const { data, error } = await supabase.rpc("api_get_subject_access", {
     _hash: await hashApiKey(raw),
     _subject: subject,
+    _space: space,
   });
-  if (error) return badRequest(error.message);
+  if (error) {
+    if (error.message.includes("unknown_space")) {
+      return Response.json({ error: `Unknown space: ${space}` }, { status: 404 });
+    }
+    return badRequest(error.message);
+  }
   if (data === null) return unauthorized();
   return Response.json(data);
 }

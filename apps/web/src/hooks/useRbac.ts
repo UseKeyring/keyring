@@ -12,6 +12,8 @@ export type Role = {
   description: string | null;
   is_system: boolean;
   scope: string;
+  /** Scope the role lives in: space id, or null for the platform scope. */
+  space_id: string | null;
   created_at: string;
 };
 
@@ -23,14 +25,32 @@ export type Permission = {
   category: string;
   is_system: boolean;
   scope: string;
+  /** Scope the action lives in: space id, or null for the platform scope. */
+  space_id: string | null;
   created_at: string;
 };
 
-export type RolePermission = { id: string; role_id: string; permission_id: string };
+export type Space = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  default_role_id: string | null;
+  created_at: string;
+};
+
+export type RolePermission = {
+  id: string;
+  role_id: string;
+  permission_id: string;
+  space_id: string | null;
+};
 export type Grant = {
   id: string;
   role_id: string;
   subject_id: string;
+  /** Scope the grant lives in: space id, or null for the platform scope. */
+  space_id: string | null;
   /** NULL = permanent; otherwise access stops authorizing after this time. */
   expires_at: string | null;
   /** ABAC gate, e.g. { attr: "plan", in: ["pro"] }. {} = unconditional. */
@@ -145,6 +165,29 @@ export function useMemberRoles() {
 /** Customer-plane helpers: console surfaces must never render scope='console' rows. */
 export const isCustomerRole = (r: Role) => r.scope !== "console";
 export const isCustomerPermission = (p: Permission) => p.scope !== "console";
+
+/** Row belongs to the selected scope: null = platform scope, id = that space. */
+export function inScope(spaceId: string | null | undefined, scopeId: string | null): boolean {
+  if (scopeId == null) return spaceId == null;
+  return spaceId === scopeId;
+}
+
+export function useSpaces() {
+  const { orgId } = useMyOrganization();
+  return useQuery({
+    queryKey: ["spaces", orgId],
+    enabled: !!orgId,
+    placeholderData: (prev) => prev,
+    queryFn: async (): Promise<Space[]> => {
+      const { data, error } = await getSupabaseBrowserClient()
+        .from("spaces")
+        .select("*")
+        .order("created_at");
+      if (error) throw error;
+      return data as Space[];
+    },
+  });
+}
 
 export function useSubjects() {
   const { orgId } = useMyOrganization();

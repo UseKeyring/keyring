@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { logAction, isCustomerPermission, useMyAccess, usePermissions, type Permission } from "@/hooks/useRbac";
+import { inScope, logAction, isCustomerPermission, useMyAccess, usePermissions, useSpaces, type Permission } from "@/hooks/useRbac";
 import { useMyOrganization } from "@/hooks/useOrganization";
 import { Button } from "@keyring/ui/components/button";
 import { Checkbox } from "@keyring/ui/components/checkbox";
@@ -21,8 +21,15 @@ export default function NewRolePage() {
   const router = useRouter();
   const base = useDashboardBase();
   const perms = usePermissions();
+  const spaces = useSpaces();
   const { orgId } = useMyOrganization();
   const editable = can("roles.manage");
+  const params = useSearchParams();
+
+  // Scope carried from the roles list (?space=<slug>, absent = platform).
+  const spaceSlug = params.get("space")?.trim() || null;
+  const space = (spaces.data ?? []).find((s) => s.slug === spaceSlug) ?? null;
+  const spaceId = space ? space.id : null;
 
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
@@ -52,6 +59,7 @@ export default function NewRolePage() {
         description: description.trim() || null,
         scope: "customer",
         organization_id: orgId,
+        space_id: spaceId,
       })
       .select("id")
       .single();
@@ -72,13 +80,13 @@ export default function NewRolePage() {
     }
     setSaving(false);
     if (user) await logAction(user.id, "role.created", slug.trim());
-    toast.success("Role created");
-    router.push(`${base}/roles`);
+    toast.success(space ? `Role created in space ${space.slug}` : "Role created");
+    router.push(spaceSlug ? `${base}/roles?space=${spaceSlug}` : `${base}/roles`);
     router.refresh();
   };
 
   const grouped = (perms.data ?? [])
-    .filter(isCustomerPermission)
+    .filter((p) => isCustomerPermission(p) && inScope(p.space_id, spaceId))
     .reduce<Record<string, Permission[]>>((acc, p) => {
       (acc[p.category] ||= []).push(p);
       return acc;
@@ -103,7 +111,8 @@ export default function NewRolePage() {
         <div>
           <h1 className="text-2xl font-medium whitespace-nowrap text-ink">Create role</h1>
           <p className="type-body-sm mt-1 text-ink-muted">
-            Bundle actions into a named role. Select the permissions it should hold.
+            Bundle actions into a named role{space ? ` in space ${space.slug}` : " in the platform scope"}. Only
+            actions from the same scope can be attached.
           </p>
         </div>
         <CreateWithAiButton href={`${base}/roles/new/ai`} />
@@ -179,7 +188,7 @@ export default function NewRolePage() {
                   </div>
                 </div>
               ))}
-              {(perms.data ?? []).filter(isCustomerPermission).length === 0 && (
+              {(perms.data ?? []).filter((p) => isCustomerPermission(p) && inScope(p.space_id, spaceId)).length === 0 && (
                 <p className="type-body-sm text-ink-muted">
                   No actions exist yet — create some first.
                 </p>

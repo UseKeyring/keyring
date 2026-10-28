@@ -8,6 +8,7 @@ import type {
   CreatePermissionResult,
   CreateRoleInput,
   CreateRoleResult,
+  CreateSpaceInput,
   CreateSubjectTokenInput,
   CreateWebhookInput,
   CreateWebhookResult,
@@ -23,6 +24,7 @@ import type {
   Role,
   SetSubjectAttrsInput,
   SetSubjectAttrsResult,
+  Space,
   SubjectAccess,
   SubjectTokenResult,
   SubjectTokenSource,
@@ -63,16 +65,17 @@ export class Keyring {
 
   /**
    * Server (secret key): `check(subject, permission)` or
-   * `check(subject, permission, { context })` for ABAC.
+   * `check(subject, permission, { context, space })` for ABAC / spaces.
    * Browser (publishable key): `check(permission)` or
-   * `check(permission, { subjectToken, context })`
+   * `check(permission, { subjectToken, context, space })`
+   * Space is optional: omitted = platform scope, a slug = that space only.
    */
-  check(subject: string, permission: string, opts?: { context?: Record<string, unknown> }): Promise<CheckResult>;
+  check(subject: string, permission: string, opts?: { context?: Record<string, unknown>; space?: string }): Promise<CheckResult>;
   check(permission: string, opts?: CheckOptions): Promise<CheckResult>;
   async check(
     subjectOrPermission: string,
     permissionOrOpts?: string | CheckOptions,
-    secretOpts?: { context?: Record<string, unknown> },
+    secretOpts?: { context?: Record<string, unknown>; space?: string },
   ): Promise<CheckResult> {
     if (typeof permissionOrOpts === "string") {
       requireSecretKey(this.apiKey, "pass a raw subject to check()");
@@ -80,6 +83,7 @@ export class Keyring {
         subject: subjectOrPermission,
         permission: permissionOrOpts,
         context: secretOpts?.context,
+        space: secretOpts?.space,
       });
     }
 
@@ -103,18 +107,20 @@ export class Keyring {
       permission: subjectOrPermission,
       subjectToken,
       context: permissionOrOpts?.context,
+      space: permissionOrOpts?.space,
     });
   }
 
-  assert(subject: string, permission: string): Promise<CheckResult>;
+  assert(subject: string, permission: string, opts?: { space?: string }): Promise<CheckResult>;
   assert(permission: string, opts?: CheckOptions): Promise<CheckResult>;
   async assert(
     subjectOrPermission: string,
     permissionOrOpts?: string | CheckOptions,
+    secretOpts?: { space?: string },
   ): Promise<CheckResult> {
     const result =
       typeof permissionOrOpts === "string"
-        ? await this.check(subjectOrPermission, permissionOrOpts)
+        ? await this.check(subjectOrPermission, permissionOrOpts, secretOpts)
         : await this.check(subjectOrPermission, permissionOrOpts);
     if (!result.allowed) {
       throw new ForbiddenError(
@@ -160,6 +166,7 @@ export class Keyring {
         role: input.role,
         subject: input.subject,
         display_name: input.displayName,
+        space: input.space,
         expires_at:
           input.expiresAt instanceof Date
             ? input.expiresAt.toISOString()
@@ -172,8 +179,9 @@ export class Keyring {
     });
   }
 
-  /** Provision a subject into the workspace DEFAULT role. No role slug — the
-   *  server resolves it. Idempotent (`granted: false` when already held). */
+  /** Provision a subject into the DEFAULT role of one scope (space slug or
+   *  omitted for the platform scope). No role slug — the server resolves it.
+   *  Idempotent (`granted: false` when already held). */
   async provisionSubject(input: ProvisionSubjectInput): Promise<ProvisionSubjectResult> {
     requireSecretKey(this.apiKey, "provision subjects");
     return apiRequest<ProvisionSubjectResult>({
@@ -184,6 +192,7 @@ export class Keyring {
       body: {
         subject: input.subject,
         display_name: input.displayName,
+        space: input.space,
       },
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
@@ -218,18 +227,20 @@ export class Keyring {
       body: {
         role: input.role,
         subject: input.subject,
+        space: input.space,
       },
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
     });
   }
 
-  /** Grant `to`, then revoke `from`. If revoke fails after grant, the subject may briefly hold both. */
+  /** Grant `to`, then revoke `from` (same scope). If revoke fails after grant, the subject may briefly hold both. */
   async replaceRole(input: ReplaceRoleInput): Promise<void> {
     await this.grantRole({
       role: input.to,
       subject: input.subject,
       displayName: input.displayName,
+      space: input.space,
       ...(input.expiresAt != null ? { expiresAt: input.expiresAt } : {}),
       ...(input.ttlSeconds != null ? { ttlSeconds: input.ttlSeconds } : {}),
       ...(input.condition != null ? { condition: input.condition } : {}),
@@ -237,13 +248,14 @@ export class Keyring {
     await this.revokeRole({
       role: input.from,
       subject: input.subject,
+      space: input.space,
     });
   }
 
   /**
-   * Create (or update) a role in the key's workspace. Idempotent — re-creating
-   * the same slug updates name/description and adds permission links.
-   * Secret key with `roles.write` scope only.
+   * Create (or update) a role in the key's workspace + scope. Idempotent —
+   * re-creating the same slug updates name/description and adds permission
+   * links. Secret key with `roles.write` scope only.
    */
   async createRole(input: CreateRoleInput): Promise<CreateRoleResult> {
     requireSecretKey(this.apiKey, "create roles");
@@ -257,6 +269,7 @@ export class Keyring {
         name: input.name,
         description: input.description,
         permissions: input.permissions,
+        space: input.space,
       },
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
@@ -264,7 +277,7 @@ export class Keyring {
   }
 
   /**
-   * Create (or update) an action in the key's workspace. Idempotent.
+   * Create (or update) an action in the key's workspace + scope. Idempotent.
    * Secret key with `actions.write` scope only.
    */
   async createPermission(input: CreatePermissionInput): Promise<CreatePermissionResult> {
@@ -279,6 +292,7 @@ export class Keyring {
         name: input.name,
         category: input.category,
         description: input.description,
+        space: input.space,
       },
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
@@ -290,24 +304,26 @@ export class Keyring {
     return this.createPermission(input);
   }
 
-  async listRoles(): Promise<Role[]> {
+  async listRoles(space?: string): Promise<Role[]> {
     requireSecretKey(this.apiKey, "list roles");
     const data = await apiRequest<{ roles: Role[] }>({
       baseUrl: this.baseUrl,
       apiKey: this.apiKey,
       path: "/api/v1/roles",
+      query: space ? { space } : undefined,
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
     });
     return data.roles ?? [];
   }
 
-  async listPermissions(): Promise<Permission[]> {
+  async listPermissions(space?: string): Promise<Permission[]> {
     requireSecretKey(this.apiKey, "list permissions");
     const data = await apiRequest<{ permissions: Permission[] }>({
       baseUrl: this.baseUrl,
       apiKey: this.apiKey,
       path: "/api/v1/permissions",
+      query: space ? { space } : undefined,
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
     });
@@ -340,6 +356,7 @@ export class Keyring {
         permission,
         allowed: opts?.allowed,
         context: opts?.context ?? {},
+        space: opts?.space,
       },
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
@@ -347,17 +364,63 @@ export class Keyring {
   }
 
   /**
-   * Full access snapshot for one subject — backfill + nightly reconcile for
-   * customer mirrors (keyring.access). Secret key with `check` scope.
-   * Unknown subject → empty roles/permissions (not 404).
+   * Full access snapshot for one subject in one scope — backfill + nightly
+   * reconcile for customer mirrors (keyring.access). Secret key with
+   * `check` scope. Unknown subject → empty roles/permissions (not 404).
    */
-  async getSubjectAccess(subject: string): Promise<SubjectAccess> {
+  async getSubjectAccess(subject: string, space?: string): Promise<SubjectAccess> {
     requireSecretKey(this.apiKey, "read subject access snapshots");
     return apiRequest<SubjectAccess>({
       baseUrl: this.baseUrl,
       apiKey: this.apiKey,
       path: "/api/v1/subjects/access",
-      query: { subject },
+      query: space ? { subject, space } : { subject },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+  }
+
+  /** List spaces. Secret key with `spaces.read`. */
+  async listSpaces(): Promise<Space[]> {
+    requireSecretKey(this.apiKey, "list spaces");
+    const data = await apiRequest<{ spaces: Space[] }>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/spaces",
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+    return data.spaces ?? [];
+  }
+
+  /** Create (or update) a space. Secret key with `spaces.write`. */
+  async createSpace(input: CreateSpaceInput): Promise<Space> {
+    requireSecretKey(this.apiKey, "create spaces");
+    return apiRequest<Space>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/spaces",
+      method: "POST",
+      body: {
+        slug: input.slug,
+        name: input.name,
+        description: input.description,
+      },
+      fetchImpl: this.fetchImpl,
+      headers: this.extraHeaders,
+    });
+  }
+
+  /** Delete a space (cascades to its roles, actions and grants).
+   *  Secret key with `spaces.write`. */
+  async deleteSpace(space: string): Promise<void> {
+    requireSecretKey(this.apiKey, "delete spaces");
+    await apiRequest<{ ok: true }>({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+      path: "/api/v1/spaces",
+      method: "DELETE",
+      body: { space },
       fetchImpl: this.fetchImpl,
       headers: this.extraHeaders,
     });
@@ -415,12 +478,14 @@ export class Keyring {
     subject?: string;
     subjectToken?: string;
     context?: Record<string, unknown>;
+    space?: string;
   }): Promise<CheckResult> {
     // Secret-key path can also pass an explicit subject + context.
     // Browser path resolves subject from the JWT; context rides along.
     const query: Record<string, string | undefined> = {
       permission: input.permission,
       subject: input.subject,
+      space: input.space,
     };
     if (input.context && Object.keys(input.context).length > 0) {
       query["context"] = JSON.stringify(input.context);

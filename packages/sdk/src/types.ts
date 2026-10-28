@@ -18,6 +18,8 @@ export type AbacCondition = Record<string, unknown>;
 export type CheckResult = {
   subject: string;
   permission: string;
+  /** Scope the check evaluated: space slug, or null for the platform scope. */
+  space: string | null;
   allowed: boolean;
 };
 
@@ -25,21 +27,28 @@ export type GrantResult = {
   ok: true;
   role: string;
   subject: string;
+  /** Scope the grant lives in: space slug, or null for the platform scope. */
+  space?: string | null;
   expires_at?: string | null;
   ttl_seconds?: number | null;
   condition?: AbacCondition | null;
 };
 
-/** Provision a subject into the workspace DEFAULT role. No role slug — the
- *  server resolves organizations.default_role_id. Idempotent. */
+/** Provision a subject into the DEFAULT role of one scope. No role slug —
+ *  the server resolves organizations.default_role_id (platform) or the
+ *  space's default_role_id. Idempotent. */
 export type ProvisionSubjectInput = {
   subject: string;
   displayName?: string;
+  /** Space slug, or omitted for the platform scope. */
+  space?: string;
 };
 
 export type ProvisionSubjectResult = {
   subject: string;
   role: string;
+  /** Scope provisioned into: space slug, or null for the platform scope. */
+  space: string | null;
   /** False when the subject already held the default (idempotent re-call). */
   granted: boolean;
 };
@@ -65,6 +74,8 @@ export type Role = {
   slug: string;
   name: string;
   description: string | null;
+  /** Scope the role lives in: space slug, or null for the platform scope. */
+  space?: string | null;
   created_at: string;
 };
 
@@ -73,6 +84,8 @@ export type Permission = {
   name: string;
   description: string | null;
   category: string;
+  /** Scope the action lives in: space slug, or null for the platform scope. */
+  space?: string | null;
   created_at: string;
 };
 
@@ -80,6 +93,8 @@ export type GrantInput = {
   role: string;
   subject: string;
   displayName?: string;
+  /** Space slug, or omitted for the platform scope. */
+  space?: string;
   /**
    * Temporary access: absolute expiry (Date or ISO string) or TTL in seconds
    * (e.g. `ttlSeconds: 300` = access for the next 5 minutes).
@@ -104,6 +119,8 @@ export type SetSubjectAttrsInput = {
 export type RevokeInput = {
   role: string;
   subject: string;
+  /** Space slug, or omitted for the platform scope. */
+  space?: string;
 };
 
 export type ReplaceRoleInput = {
@@ -114,6 +131,8 @@ export type ReplaceRoleInput = {
   expiresAt?: Date | string;
   ttlSeconds?: number;
   condition?: AbacCondition;
+  /** Space slug, or omitted for the platform scope. */
+  space?: string;
 };
 
 export type CreateSubjectTokenInput = {
@@ -126,10 +145,13 @@ export type CreateRoleInput = {
   name: string;
   description?: string;
   /**
-   * Action slugs to attach (must already exist — create them first with
-   * `createPermission`). Additive: re-creating never removes mappings.
+   * Action slugs to attach (must already exist in the SAME scope — create
+   * them first with `createPermission` passing the same space).
+   * Additive: re-creating never removes mappings.
    */
   permissions?: string[];
+  /** Space slug, or omitted for the platform scope. */
+  space?: string;
 };
 
 export type CreatePermissionInput = {
@@ -137,12 +159,16 @@ export type CreatePermissionInput = {
   name: string;
   category?: string;
   description?: string;
+  /** Space slug, or omitted for the platform scope. */
+  space?: string;
 };
 
 export type CreateRoleResult = {
   slug: string;
   name: string;
   description: string | null;
+  /** Scope the role lives in: space slug, or null for the platform scope. */
+  space?: string | null;
   created_at: string;
 };
 
@@ -151,6 +177,8 @@ export type CreatePermissionResult = {
   name: string;
   description: string | null;
   category: string;
+  /** Scope the action lives in: space slug, or null for the platform scope. */
+  space?: string | null;
   created_at: string;
 };
 
@@ -158,6 +186,8 @@ export type CheckOptions = {
   subjectToken?: string;
   /** ABAC request context, e.g. `{ plan: "pro" }` — context wins over stored attrs. */
   context?: Record<string, unknown>;
+  /** Space slug, or omitted for the platform scope. */
+  space?: string;
 };
 
 export type CheckWithContextInput = {
@@ -168,6 +198,8 @@ export type CheckWithContextInput = {
 export type TrackOptions = {
   allowed?: boolean;
   context?: Record<string, unknown>;
+  /** Space slug, or omitted for the platform scope. */
+  space?: string;
 };
 
 export type TrackResult = {
@@ -177,8 +209,24 @@ export type TrackResult = {
 
 export type SubjectAccess = {
   subject: string;
+  /** Scope the snapshot covers: space slug, or null for the platform scope. */
+  space?: string | null;
   roles: string[];
   permissions: string[];
+};
+
+export type Space = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+};
+
+export type CreateSpaceInput = {
+  slug: string;
+  name: string;
+  description?: string;
 };
 
 export type WebhookEndpoint = {

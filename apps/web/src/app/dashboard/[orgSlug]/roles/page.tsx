@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  inScope,
   isCustomerPermission,
   isCustomerRole,
   logAction,
@@ -16,6 +17,7 @@ import {
 } from "@/hooks/useRbac";
 import { Button } from "@keyring/ui/components/button";
 import { useDashboardBase } from "../../dashboard-chrome";
+import { SpaceScopeSelect, useSpaceScope } from "../space-scope";
 import { Checkbox } from "@keyring/ui/components/checkbox";
 import { NoAccess } from "@keyring/ui/components/no-access";
 import { CardsSkeleton } from "@keyring/ui/components/skeletons";
@@ -31,10 +33,21 @@ export default function RolesPage() {
   const qc = useQueryClient();
   const editable = can("roles.manage");
   const loading = roles.isLoading || perms.isLoading || rolePerms.isLoading;
+  const { spaceSlug, spaceId, setSpaceSlug } = useSpaceScope();
 
   if (!accessLoading && !can("roles.read")) {
     return <NoAccess title="Roles" action="roles.read" />;
   }
+
+  const scopeRoles = (roles.data ?? []).filter(
+    (r) => isCustomerRole(r) && inScope(r.space_id, spaceId),
+  );
+  const scopePerms = (perms.data ?? []).filter(
+    (p) => isCustomerPermission(p) && inScope(p.space_id, spaceId),
+  );
+  const scopeRolePerms = (rolePerms.data ?? []).filter((rp) =>
+    inScope(rp.space_id, spaceId),
+  );
 
   const toggle = async (roleId: string, permId: string, on: boolean, label: string) => {
     const supabase = getSupabaseBrowserClient();
@@ -85,12 +98,18 @@ export default function RolesPage() {
         </div>
         {editable && (
           <div className="flex items-center gap-2">
+            <SpaceScopeSelect value={spaceSlug} onChange={setSpaceSlug} />
             <Button size="sm" asChild>
-              <Link href={`${base}/roles/new`}>
+              <Link href={spaceSlug ? `${base}/roles/new?space=${spaceSlug}` : `${base}/roles/new`}>
                 <SolarIcon name="plus" className="h-3.5 w-3.5" />
                 <span className="hidden md:inline">New Role</span>
               </Link>
             </Button>
+          </div>
+        )}
+        {!editable && (
+          <div className="flex items-center gap-2">
+            <SpaceScopeSelect value={spaceSlug} onChange={setSpaceSlug} />
           </div>
         )}
       </div>
@@ -99,7 +118,7 @@ export default function RolesPage() {
         <CardsSkeleton />
       ) : (
       <div className="grid gap-4 lg:grid-cols-2">
-        {(roles.data ?? []).filter(isCustomerRole).map((r) => {
+        {scopeRoles.map((r) => {
           return (
             <div
               key={r.id}
@@ -128,8 +147,8 @@ export default function RolesPage() {
               </div>
 
               <div className="mt-6 space-y-3 border-t border-hairline pt-6">
-                {(perms.data ?? []).filter(isCustomerPermission).map((p) => {
-                  const on = (rolePerms.data ?? []).some(
+                {scopePerms.map((p) => {
+                  const on = scopeRolePerms.some(
                     (rp) => rp.role_id === r.id && rp.permission_id === p.id,
                   );
                   return (
@@ -150,6 +169,11 @@ export default function RolesPage() {
             </div>
           );
         })}
+        {scopeRoles.length === 0 && (
+          <div className="type-body-sm rounded-2xl border border-hairline bg-pillar p-8 text-center text-ink-muted lg:col-span-2">
+            No roles in this scope yet.
+          </div>
+        )}
       </div>
       )}
     </div>

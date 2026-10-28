@@ -5,23 +5,31 @@ description: Raw Management API (/api/v1) — auth, scopes, and endpoints behind
 
 All routes take `Authorization: Bearer <key>` (`kr_sk_live_…` / `kr_pk_live_…` / legacy `kr_live_…`). Key metadata (workspace, type, scopes, expiry) is resolved per request; bad/revoked/expired → `401`. Missing scope → `403`.
 
-Built-in scopes: `check`, `grants.write`, `roles.read`, `roles.write`, `actions.read`, `actions.write`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`, `webhooks.read`, `webhooks.write`. Publishable keys are capped to `check`.
+Built-in scopes: `check`, `grants.write`, `roles.read`, `roles.write`, `spaces.read`, `spaces.write`, `actions.read`, `actions.write`, `subject_tokens.write`, `telemetry.read`, `telemetry.write`, `webhooks.read`, `webhooks.write`. Publishable keys are capped to `check`.
+
+## Spaces
+
+The second isolation layer: platform scope (no space) plus fully isolated spaces — each space has its own actions, roles and grants. A subject can hold `invoices.refund` in space `acme` and nothing in `globex`. Every endpoint below takes an optional `space` (query `?space=` on GETs, body `space` on POST/DELETEs); omitted = platform scope. Unknown slug → `404 unknown_space`. Checks evaluate exactly the scope passed — no cross-scope inheritance.
+
+## GET /api/v1/spaces · POST /api/v1/spaces · DELETE /api/v1/spaces
+
+Secret. List needs `spaces.read`, create/delete need `spaces.write`. Create is idempotent (`{ slug, name, description? }`); delete takes `{ space }` and cascades to the space's roles, actions, links and grants. SDK: `keyring.listSpaces()`, `keyring.createSpace({ slug, name })`, `keyring.deleteSpace(space)`.
 
 ## GET /api/v1/check
 
 ```http
-GET /api/v1/check?subject=user_123&permission=invoices.refund&context=%7B%22plan%22%3A%22pro%22%7D
+GET /api/v1/check?subject=user_123&permission=invoices.refund&space=acme&context=%7B%22plan%22%3A%22pro%22%7D
 Authorization: Bearer kr_sk_live_…
 ```
 
-- Secret key: `?subject=` + `?permission=` (+ optional `?context=` URL-encoded JSON object).
-- Publishable key: `?permission=` only, plus `X-Keyring-Subject-Token: <jwt>`; any `?subject=` is ignored and the subject comes from the verified JWT. `?context=` still rides along.
+- Secret key: `?subject=` + `?permission=` (+ optional `?context=` URL-encoded JSON object, `?space=` slug).
+- Publishable key: `?permission=` only, plus `X-Keyring-Subject-Token: <jwt>`; any `?subject=` is ignored and the subject comes from the verified JWT. `?context=` and `?space=` still ride along.
 - CORS: `Access-Control-Allow-Origin: *`, allowed headers `Authorization, Content-Type, X-Keyring-Subject-Token`.
-- Response: `{ "subject": "user_123", "permission": "invoices.refund", "allowed": true }`.
+- Response: `{ "subject": "user_123", "permission": "invoices.refund", "space": "acme", "allowed": true }` (`space: null` for the platform scope).
 
 ## POST /api/v1/grants · DELETE /api/v1/grants
 
-Secret, scope `grants.write`. Grant a role (supports `display_name`, `expires_at` / `ttl_seconds`, ABAC `condition`); revoke with `{ role, subject }`.
+Secret, scope `grants.write`. Grant a role (supports `display_name`, `expires_at` / `ttl_seconds`, ABAC `condition`, `space`); revoke with `{ role, subject, space? }`. SDK: `keyring.grantRole({ role, subject, space })`, `keyring.revokeRole({ role, subject, space })`.
 
 ## POST /api/v1/subjects
 
@@ -33,11 +41,11 @@ Secret, scope `subject_tokens.write`. Mint a browser JWT. Body: `{ subject, ttl_
 
 ## GET /api/v1/roles · GET /api/v1/permissions
 
-Secret. `roles.read` → `{ roles: [{ slug, name, description, created_at }] }`; `actions.read` → `{ permissions: [...] }` (SDK alias `listActions()`).
+Secret. `roles.read` → `{ roles: [{ slug, name, description, space, created_at }] }`; `actions.read` → `{ permissions: [...] }` (SDK alias `listActions()`). Both accept `?space=` (omitted = platform scope); SDK: `keyring.listRoles(space?)`, `keyring.listPermissions(space?)`.
 
 ## POST /api/v1/roles · POST /api/v1/permissions
 
-Secret. Create (or update) a role or action in the key's workspace — no dashboard step needed. Both are idempotent: re-POSTing the same slug updates `name` / `description` (and adds permission links) instead of failing.
+Secret. Create (or update) a role or action in the key's workspace + scope — no dashboard step needed. Both are idempotent: re-POSTing the same slug updates `name` / `description` (and adds permission links) instead of failing. Pass `space` to create inside a space; permissions attached to a role must live in the same scope.
 
 ```http
 POST /api/v1/permissions
@@ -58,38 +66,38 @@ Content-Type: application/json
 { "slug": "player", "name": "Player", "permissions": ["games.play", "games.create"] }
 ```
 
-- Scope `roles.write`. `permissions` must already exist — create actions first. Unknown action slug → `404` (`Unknown permission: …`) with no partial write.
+- Scope `roles.write`. `permissions` must already exist in the same scope — create actions first (with the same `space`). Unknown action slug → `404` (`Unknown permission: …`) with no partial write.
 - Permission links are additive: re-POSTing never removes existing mappings.
-- SDK: `keyring.createPermission({ slug, name })`, `keyring.createRole({ slug, name, permissions })` (alias `createAction()`).
+- SDK: `keyring.createPermission({ slug, name, space })`, `keyring.createRole({ slug, name, permissions, space })` (alias `createAction()`).
 
 ## POST /api/v1/events
 
-Secret, scope `telemetry.write`. Manual telemetry event paired with auto-logged checks. Body: `{ subject, permission, allowed?, context? }` → `{ ok: true, id }`.
+Secret, scope `telemetry.write`. Manual telemetry event paired with auto-logged checks. Body: `{ subject, permission, allowed?, context?, space? }` → `{ ok: true, id }`.
 
 ## GET /api/v1/subjects/access
 
-Secret, scope `check`. Full access snapshot for one subject — backfill + nightly reconcile for customer mirrors (`templates/customer-mirror/schema.sql`). Expired grants excluded (mirror filters them too; rows stay).
+Secret, scope `check`. Full access snapshot for one subject in one scope — backfill + nightly reconcile for customer mirrors (`templates/customer-mirror/schema.sql`). Expired grants excluded (mirror filters them too; rows stay).
 
 ```http
-GET /api/v1/subjects/access?subject=user_123
+GET /api/v1/subjects/access?subject=user_123&space=acme
 Authorization: Bearer kr_sk_live_…
 ```
 
-Response: `{ "subject": "user_123", "roles": ["teacher"], "permissions": ["records.insert"] }`. Unknown subject → empty arrays (not 404). SDK: `keyring.getSubjectAccess(subject)`.
+Response: `{ "subject": "user_123", "space": "acme", "roles": ["teacher"], "permissions": ["records.insert"] }`. Unknown subject → empty arrays (not 404). SDK: `keyring.getSubjectAccess(subject, space?)`.
 
 ## POST /api/v1/subjects/provision
 
-Secret, scope `grants.write`. Grant the workspace **default role** (Settings → Default role) to a subject — auto-provisioned, idempotent. No role slug in the request: the server resolves it, so the caller can never choose or escalate roles.
+Secret, scope `grants.write`. Grant the **default role of the requested scope** (platform default in Settings, or the space's default on the Spaces page) to a subject — auto-provisioned, idempotent. No role slug in the request: the server resolves it, so the caller can never choose or escalate roles.
 
 ```http
 POST /api/v1/subjects/provision
 Authorization: Bearer kr_sk_live_…
 Content-Type: application/json
 
-{ "subject": "user_123", "display_name": "carol@example.com" }
+{ "subject": "user_123", "display_name": "carol@example.com", "space": "acme" }
 ```
 
-Response: `{ "subject": "user_123", "role": "player", "granted": true }` (`granted: false` when already held). No default configured → `409 no_default_role` (fail-closed). SDK: `keyring.provisionSubject({ subject, displayName })`.
+Response: `{ "subject": "user_123", "role": "player", "space": "acme", "granted": true }` (`granted: false` when already held). No default configured → `409 no_default_role` (fail-closed). SDK: `keyring.provisionSubject({ subject, displayName, space })`.
 
 ## POST /api/v1/integrations/supabase/start · POST /api/v1/integrations/supabase/verify
 
@@ -166,4 +174,4 @@ where n.nspname = 'net' and p.proname like 'http%';
 
 ## Errors
 
-`{ "error": "…" }` with `400` (bad input, e.g. missing `permission`/`subject`, invalid `context`, bad role/action slug), `401` (bad key / bad subject token), `403` (missing scope), `404` (unknown role / unknown permission), `500` (API not configured).
+`{ "error": "…" }` with `400` (bad input, e.g. missing `permission`/`subject`, invalid `context`, bad role/action slug), `401` (bad key / bad subject token), `403` (missing scope), `404` (unknown role / unknown permission / unknown space), `500` (API not configured).

@@ -72,6 +72,19 @@ async function postJson(url: string, body: Record<string, unknown>, key?: string
   return data ?? {};
 }
 
+// Console sessions live in the browser (localStorage) — no auth cookies are
+// set — so the wizard passes the user's JWT explicitly. The server validates
+// it via auth.getUser() before running anything.
+async function userJwt(): Promise<string> {
+  const {
+    data: { session },
+  } = await getSupabaseBrowserClient().auth.getSession();
+  if (!session?.access_token) {
+    throw new Error("Sign in required — please sign out and back in");
+  }
+  return session.access_token;
+}
+
 function StepsList({ steps }: { steps: MgmtStep[] }) {
   if (steps.length === 0) {
     return <p className="type-body-sm text-ink-muted">No steps reported yet.</p>;
@@ -154,7 +167,7 @@ export function SupabaseConnectSection() {
     }
     setBusy(true);
     try {
-      const data = await postJson(START_URL, {});
+      const data = await postJson(START_URL, {}, await userJwt());
       if (!data.session_id || !data.login_url) throw new Error("Unexpected start response");
       setPhase({ name: "started", sessionId: data.session_id, loginUrl: data.login_url });
     } catch (e) {
@@ -173,10 +186,14 @@ export function SupabaseConnectSection() {
     const sessionId = phase.sessionId;
     setBusy(true);
     try {
-      const data = await postJson(PROJECTS_URL, {
-        session_id: sessionId,
-        code: code.trim(),
-      });
+      const data = await postJson(
+        PROJECTS_URL,
+        {
+          session_id: sessionId,
+          code: code.trim(),
+        },
+        await userJwt(),
+      );
       if (!Array.isArray(data.projects) || typeof data.supabase_token !== "string") {
         throw new Error("Unexpected projects response");
       }
@@ -207,7 +224,9 @@ export function SupabaseConnectSection() {
         key_hash: await hashApiKey(raw),
         prefix: raw.slice(0, 12),
         key_type: "secret",
-        scopes: ["integrations.write"],
+        // Both connect scopes: integrations.write drives the orchestration,
+        // webhooks.write covers databases where 0045 isn't applied yet.
+        scopes: ["integrations.write", "webhooks.write"],
         expires_at: null,
         organization_id: orgId,
         created_by: user.id,

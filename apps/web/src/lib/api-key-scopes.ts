@@ -10,6 +10,8 @@ export const API_KEY_SCOPES = [
   "grants.write",
   "roles.read",
   "roles.write",
+  "spaces.read",
+  "spaces.write",
   "actions.read",
   "actions.write",
   "subject_tokens.write",

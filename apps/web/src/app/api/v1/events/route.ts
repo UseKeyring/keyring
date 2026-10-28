@@ -16,13 +16,15 @@ const TrackBody = z.object({
   action: z.string().min(1).optional(),
   allowed: z.boolean().optional(),
   context: z.record(z.string(), z.unknown()).optional(),
+  space: z.string().min(1).max(120).optional(),
 });
 
 /*
- * POST /api/v1/events { subject, permission|action, allowed?, context? }
+ * POST /api/v1/events { subject, permission|action, allowed?, context?, space? }
  * Manual telemetry event (paired with auto-logged GET /api/v1/check rows).
  * Secret key with `telemetry.write` scope only — publishable keys stay
- * check-only. Resolves `allowed` via the RBAC graph when omitted.
+ * check-only. Resolves `allowed` via the RBAC graph of the given scope
+ * (omitted = platform scope) when omitted.
  */
 export async function POST(req: Request) {
   const raw = bearerHash(req);
@@ -37,10 +39,10 @@ export async function POST(req: Request) {
 
   const parsed = TrackBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return badRequest("Expected { subject, permission|action, allowed?, context? }");
+    return badRequest("Expected { subject, permission|action, allowed?, context?, space? }");
   }
   const perm = (parsed.data.permission ?? parsed.data.action ?? "").trim();
-  if (!perm) return badRequest("Expected { subject, permission|action, allowed?, context? }");
+  if (!perm) return badRequest("Expected { subject, permission|action, allowed?, context?, space? }");
 
   const { data, error } = await supabase.rpc("api_track_event", {
     _hash: await hashApiKey(raw),
@@ -48,8 +50,12 @@ export async function POST(req: Request) {
     _perm: perm,
     _allowed: parsed.data.allowed ?? null,
     _context: (parsed.data.context ?? {}) as never,
+    _space: parsed.data.space?.trim() || null,
   });
   if (error) {
+    if (error.message.includes("unknown_space")) {
+      return badRequest(`Unknown space: ${parsed.data.space}`);
+    }
     if (error.message.includes("telemetry_disabled")) {
       return badRequest("Telemetry is disabled for this workspace");
     }

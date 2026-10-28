@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  inScope,
   isCustomerRole,
   isGrantActive,
   logAction,
@@ -38,6 +39,7 @@ import {
 import { TableSkeleton } from "@keyring/ui/components/skeletons";
 import { useMyOrganization } from "@/hooks/useOrganization";
 import { AddUserDialog } from "./add-user-dialog";
+import { SpaceScopeSelect, useSpaceScope } from "../space-scope";
 
 const TEMP_PRESETS = [
   { value: "5m", label: "5 minutes", seconds: 5 * 60 },
@@ -63,11 +65,13 @@ function TempAccessDialog({
   onOpenChange,
   subject,
   roles,
+  spaceId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   subject: Subject | null;
   roles: Role[];
+  spaceId: string | null;
 }) {
   const { user } = useAuth();
   const { orgId } = useMyOrganization();
@@ -107,19 +111,23 @@ function TempAccessDialog({
     setSaving(true);
     const supabase = getSupabaseBrowserClient();
     const iso = expiresAt.toISOString();
-    // Upsert: re-granting the same pair refreshes the expiry window.
-    const { data: existing } = await supabase
+    // Upsert: re-granting the same triple refreshes the expiry window.
+    // Scope-aware: the same (subject, role) pair can exist once per scope,
+    // but role ids are already scope-unique so subject+role identifies the row.
+    let lookup = supabase
       .from("grants")
       .select("id")
       .eq("subject_id", subject.id)
-      .eq("role_id", roleId)
-      .maybeSingle();
+      .eq("role_id", roleId);
+    lookup = spaceId == null ? lookup.is("space_id", null) : lookup.eq("space_id", spaceId);
+    const { data: existing } = await lookup.maybeSingle();
     const { error } = existing
       ? await supabase.from("grants").update({ expires_at: iso }).eq("id", (existing as { id: string }).id)
       : await supabase.from("grants").insert({
           subject_id: subject.id,
           role_id: roleId,
           organization_id: orgId,
+          space_id: spaceId,
           expires_at: iso,
         });
     setSaving(false);
@@ -209,6 +217,7 @@ export default function UsersPage() {
   const { orgId } = useMyOrganization();
   const qc = useQueryClient();
   const editable = can("users.manage");
+  const { spaceSlug, spaceId, setSpaceSlug } = useSpaceScope();
 
   const [addOpen, setAddOpen] = useState(false);
   const [tempSubject, setTempSubject] = useState<Subject | null>(null);
@@ -236,28 +245,33 @@ export default function UsersPage() {
     const supabase = getSupabaseBrowserClient();
     if (on) {
       if (!orgId) return;
-      const { data: existing } = await supabase
+      const lookupBase = supabase
         .from("grants")
         .select("id,expires_at")
         .eq("subject_id", subject.id)
-        .eq("role_id", roleId)
-        .maybeSingle();
+        .eq("role_id", roleId);
+      const { data: existing } = await (
+        spaceId == null ? lookupBase.is("space_id", null) : lookupBase.eq("space_id", spaceId)
+      ).maybeSingle();
       const row = existing as Pick<Grant, "id" | "expires_at"> | null;
       const { error } = row
         ? await supabase.from("grants").update({ expires_at: null }).eq("id", row.id)
         : await supabase
             .from("grants")
-            .insert({ subject_id: subject.id, role_id: roleId, organization_id: orgId });
+            .insert({ subject_id: subject.id, role_id: roleId, organization_id: orgId, space_id: spaceId });
       if (error) {
         toast.error(error.message);
         return;
       }
     } else {
-      const { error } = await supabase
+      const deleteBase = supabase
         .from("grants")
         .delete()
         .eq("subject_id", subject.id)
         .eq("role_id", roleId);
+      const { error } = await (
+        spaceId == null ? deleteBase.is("space_id", null) : deleteBase.eq("space_id", spaceId)
+      );
       if (error) {
         toast.error(error.message);
         return;
@@ -270,9 +284,12 @@ export default function UsersPage() {
 
   const clearExpired = async () => {
     const supabase = getSupabaseBrowserClient();
-    // Prefer the server-side purge (workspace-scoped, permission-checked);
+    // Prefer the server-side purge (workspace + scope checked);
     // fall back to a direct delete if the function is not deployed yet.
-    const { error: rpcError } = await supabase.rpc("purge_expired_grants", { _hash: null });
+    const { error: rpcError } = await supabase.rpc("purge_expired_grants", {
+      _hash: null,
+      _space: spaceSlug,
+    });
     if (!rpcError) {
       if (user) await logAction(user.id, "grant.expired_purged", "");
       refresh();
@@ -292,7 +309,9 @@ export default function UsersPage() {
   };
 
   const q = query.trim().toLowerCase();
-  const customerRoles = (roles.data ?? []).filter(isCustomerRole);
+  const customerRoles = (roles.data ?? []).filter(
+    (r) => isCustomerRole(r) && inScope(r.space_id, spaceId),
+  );
   const loading = subjects.isLoading || roles.isLoading || grants.isLoading;
   const visible = (subjects.data ?? []).filter(
     (s) =>
@@ -301,8 +320,10 @@ export default function UsersPage() {
       (s.display_name ?? "").toLowerCase().includes(q),
   );
   const expiredCount = useMemo(
-    () => (grants.data ?? []).filter((g) => !isGrantActive(g)).length,
-    [grants.data],
+    () =>
+      (grants.data ?? []).filter((g) => inScope(g.space_id, spaceId) && !isGrantActive(g))
+        .length,
+    [grants.data, spaceId],
   );
 
   if (!accessLoading && !can("users.read")) {
@@ -323,6 +344,7 @@ export default function UsersPage() {
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:items-center">
+          <SpaceScopeSelect value={spaceSlug} onChange={setSpaceSlug} />
           <div className="relative w-full md:w-auto md:min-w-[220px]">
             <Input
               value={query}
@@ -347,6 +369,7 @@ export default function UsersPage() {
         }}
         subject={tempSubject}
         roles={customerRoles}
+        spaceId={spaceId}
       />
 
       {loading ? (
@@ -377,7 +400,7 @@ export default function UsersPage() {
                   </td>
                   {(customerRoles).map((r) => {
                     const grant = (grants.data ?? []).find(
-                      (g) => g.subject_id === s.id && g.role_id === r.id,
+                      (g) => g.subject_id === s.id && g.role_id === r.id && inScope(g.space_id, spaceId),
                     );
                     const on = !!grant && isGrantActive(grant);
                     const expired = !!grant && !isGrantActive(grant);

@@ -20,6 +20,8 @@ const GrantBody = z.object({
   role: z.string().min(1, "role slug required"),
   subject: z.string().min(1, "subject external_id required"),
   display_name: z.string().optional(),
+  // Scope: space slug or omitted for the platform scope.
+  space: z.string().min(1).max(120).optional(),
   // Temporary access: either an absolute expiry or a TTL in seconds
   // (e.g. ttl_seconds: 300 = "can create repos for the next 5 minutes").
   // ttl_seconds wins when both are given. NULL/omitted = permanent.
@@ -31,11 +33,12 @@ const GrantBody = z.object({
 });
 
 /*
- * POST /api/v1/grants { role, subject, display_name?, expires_at?, ttl_seconds? }
+ * POST /api/v1/grants { role, subject, display_name?, expires_at?, ttl_seconds?, space? }
  * Grant a customer role to a subject (auto-provisions the subject,
  * fail-closed: holding nothing until granted). Idempotent — re-granting the
- * same pair upserts the expiry so temporary access can be extended without
+ * same triple upserts the expiry so temporary access can be extended without
  * a revoke first. Secret key (grants.write) only.
+ * Space is optional: omitted = platform scope, a slug = that space only.
  */
 export async function POST(req: Request) {
   const raw = bearerHash(req);
@@ -49,8 +52,8 @@ export async function POST(req: Request) {
   if (scopeErr) return scopeErr;
 
   const parsed = GrantBody.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return badRequest("Expected { role: slug, subject: external_id, display_name?: string, expires_at?: ISO datetime, ttl_seconds?: number }");
-  const { role: roleSlug, subject: externalId, display_name, expires_at, ttl_seconds, condition } = parsed.data;
+  if (!parsed.success) return badRequest("Expected { role: slug, subject: external_id, display_name?: string, expires_at?: ISO datetime, ttl_seconds?: number, space?: string }");
+  const { role: roleSlug, subject: externalId, display_name, expires_at, ttl_seconds, condition, space } = parsed.data;
 
   const { data, error } = await supabase.rpc("api_grant_role", {
     _hash: await hashApiKey(raw),
@@ -60,21 +63,23 @@ export async function POST(req: Request) {
     _expires_at: expires_at ?? null,
     _ttl_seconds: ttl_seconds ?? null,
     _condition: (condition ?? null) as never,
+    _space: space?.trim() || null,
   });
   if (error) {
     if (error.message.includes("unknown_role")) return notFound(`Unknown role: ${roleSlug}`);
+    if (error.message.includes("unknown_space")) return notFound(`Unknown space: ${space}`);
     return badRequest(error.message);
   }
   if (data === null) return unauthorized();
 
   return Response.json(
-    { ok: true, role: roleSlug, subject: externalId, expires_at: expires_at ?? null, ttl_seconds: ttl_seconds ?? null, condition: condition ?? null },
+    { ok: true, role: roleSlug, subject: externalId, space: space ?? null, expires_at: expires_at ?? null, ttl_seconds: ttl_seconds ?? null, condition: condition ?? null },
     { status: 201 },
   );
 }
 
 /*
- * DELETE /api/v1/grants { role, subject }
+ * DELETE /api/v1/grants { role, subject, space? }
  * Revoke a customer role from a subject. Idempotent. Secret key only.
  */
 export async function DELETE(req: Request) {
@@ -89,16 +94,18 @@ export async function DELETE(req: Request) {
   if (scopeErr) return scopeErr;
 
   const parsed = GrantBody.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return badRequest("Expected { role: slug, subject: external_id }");
-  const { role: roleSlug, subject: externalId } = parsed.data;
+  if (!parsed.success) return badRequest("Expected { role: slug, subject: external_id, space?: string }");
+  const { role: roleSlug, subject: externalId, space } = parsed.data;
 
   const { data, error } = await supabase.rpc("api_revoke_grant", {
     _hash: await hashApiKey(raw),
     _role: roleSlug,
     _subject: externalId,
+    _space: space?.trim() || null,
   });
   if (error) {
     if (error.message.includes("unknown_role")) return notFound(`Unknown role: ${roleSlug}`);
+    if (error.message.includes("unknown_space")) return notFound(`Unknown space: ${space}`);
     return badRequest(error.message);
   }
   if (data === null) return unauthorized();

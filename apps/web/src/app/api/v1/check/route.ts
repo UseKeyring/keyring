@@ -16,11 +16,12 @@ import {
 } from "../auth";
 
 /*
- * GET /api/v1/check?permission=<slug>&subject=<external_id>
+ * GET /api/v1/check?permission=<slug>&subject=<external_id>&space=<slug?>
  *
  * Secret key: subject comes from the query string.
  * Publishable key: subject comes from X-Keyring-Subject-Token (JWT);
  * any ?subject= query value is ignored.
+ * Space is optional: omitted = platform scope, a slug = that space only.
  */
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: checkCorsHeaders() });
@@ -42,6 +43,9 @@ export async function GET(req: Request) {
   if (!permission) {
     return withCors(badRequest("Expected ?permission=<slug>"));
   }
+  // Scope: ?space=<slug> or omitted for the platform scope.
+  // Unknown slug → 404 unknown_space (fail-closed).
+  const space = url.searchParams.get("space")?.trim() || null;
   // ABAC request context: ?context={"plan":"pro"} (URL-encoded JSON).
   // Merged with stored subject attrs inside Postgres; context wins.
   let context: Record<string, unknown> = {};
@@ -89,11 +93,19 @@ export async function GET(req: Request) {
     _subject: subject,
     _perm: permission,
     _context: context as never,
+    _space: space,
   });
-  if (error) return withCors(badRequest(error.message));
+  if (error) {
+    if (error.message.includes("unknown_space")) {
+      return withCors(
+        Response.json({ error: `Unknown space: ${space}` }, { status: 404 }),
+      );
+    }
+    return withCors(badRequest(error.message));
+  }
   if (data === null) return withCors(unauthorized());
 
   return withCors(
-    Response.json({ subject, permission, allowed: data === true }),
+    Response.json({ subject, permission, space, allowed: data === true }),
   );
 }
