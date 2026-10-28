@@ -9,6 +9,21 @@ bun add @usekeyring/sdk
 # or: npm i @usekeyring/sdk
 ```
 
+## Embedded mode (your own Postgres)
+
+No hosted API in the path — every call is one `SELECT keyring.api_*()` in your database. Install the schema with `npx @usekeyring/cli migrate && npx @usekeyring/cli bootstrap`.
+
+```ts
+import { Pool } from "pg";
+import { createKeyring } from "@usekeyring/sdk/postgres";
+
+const keyring = createKeyring({
+  database: new Pool({ connectionString: process.env.DATABASE_URL }), // pg, Neon serverless, PGlite…
+  apiKey: process.env.KEYRING_SECRET_KEY!,
+});
+await keyring.check("user_123", "invoices.refund"); // same methods + shapes as `new Keyring()`
+```
+
 ## Keys
 
 | Kind | Prefix | Where | Can do |

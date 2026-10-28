@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://usekeyring.dev/schema/policy.json",
+  "title": "Keyring policy",
+  "description": "Access model as code: actions (resource.verb), roles (bundles of actions), optional spaces (isolated tenants). Apply with `keyring push`.",
+  "type": "object",
+  "$defs": {
+    "action": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Display name"
+        },
+        {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "role": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Action slugs; supports `resource.*` and `*`"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9]+[a-z0-9._-]*\\.[a-z0-9._-]+$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/action"
+          }
+        },
+        "roles": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/role"
+          }
+        },
+        "defaultRole": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Role `provisionSubject` assigns in this scope"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/$defs/scope"
+    }
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "spaces": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/scope"
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

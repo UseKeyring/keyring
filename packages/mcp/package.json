@@ -1,7 +1,7 @@
 {
   "name": "@keyring/mcp",
   "version": "0.1.0",
-  "description": "MCP server for Keyring access control — let AI agents check access, manage roles, grants and subject tokens",
+  "description": "MCP server for Keyring access control \u2014 let AI agents check access, manage roles, grants and subject tokens",
   "type": "module",
   "license": "MIT",
   "private": true,
@@ -14,6 +14,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
     }
   },
   "files": [

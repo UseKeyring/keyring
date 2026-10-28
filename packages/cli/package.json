@@ -1,0 +1,57 @@
+{
+  "name": "@usekeyring/cli",
+  "version": "0.1.0",
+  "description": "Keyring CLI \u2014 migrate, bootstrap, policy-as-code, local console (studio) and MCP for agents",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "keyring": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "policy.schema.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "check-types": "tsc --noEmit --incremental --tsBuildInfoFile .cache/typecheck.tsbuildinfo",
+    "dev": "bun run src/index.ts",
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "pg": "^8.13.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@keyring/mcp": "workspace:*",
+    "@keyring/typescript-config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "@usekeyring/sdk": "workspace:*",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UseKeyring/keyring.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://usekeyring.dev/docs/cli",
+  "keywords": [
+    "authorization",
+    "rbac",
+    "abac",
+    "permissions",
+    "postgres",
+    "mcp",
+    "cli"
+  ]
+}

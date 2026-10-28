@@ -1,4 +1,13 @@
 {
   "title": "Docs",
-  "pages": ["index", "quickstart", "typescript-sdk", "api-reference", "supabase-connect", "supabase-rls", "neon-rls"]
+  "pages": [
+    "index",
+    "quickstart",
+    "typescript-sdk",
+    "cli",
+    "api-reference",
+    "supabase-connect",
+    "supabase-rls",
+    "neon-rls"
+  ]
 }

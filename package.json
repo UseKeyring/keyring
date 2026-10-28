@@ -11,7 +11,8 @@
     "build": "turbo run build",
     "check-types": "turbo run check-types",
     "lint": "turbo run lint",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "keyring": "bun packages/cli/src/index.ts"
   },
   "devDependencies": {
     "prettier": "^3.7.3",

@@ -1,5 +1,7 @@
 export type KeyringErrorBody = {
   error?: string;
+  /** Machine-readable reason, e.g. `unknown_role` (embedded mode + CLI). */
+  code?: string;
 };
 
 export class KeyringError extends Error {

@@ -69,11 +69,11 @@ function textOf(result: unknown): string {
 }
 
 describe("keyring-mcp", () => {
-  test("exposes all nine tools", async () => {
+  test("exposes all eleven tools", async () => {
     const client = await connectedClient(apiMock());
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual(
-      ["check_access", "create_action", "create_role", "create_subject_token", "grant_role", "list_actions", "list_roles", "replace_role", "revoke_role"].sort(),
+      ["check_access", "create_action", "create_role", "create_subject_token", "get_subject_access", "grant_role", "list_actions", "list_roles", "list_spaces", "replace_role", "revoke_role"].sort(),
     );
     await client.close();
   });

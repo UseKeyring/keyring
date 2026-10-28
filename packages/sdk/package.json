@@ -1,6 +1,6 @@
 {
   "name": "@usekeyring/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript client for the Keyring Management API (server + browser)",
   "type": "module",
   "license": "MIT",
@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./postgres": {
+      "types": "./dist/postgres.d.ts",
+      "import": "./dist/postgres.js"
     }
   },
   "files": [
@@ -20,7 +24,8 @@
     "build": "tsc -p tsconfig.json",
     "check-types": "tsc --noEmit --incremental --tsBuildInfoFile .cache/typecheck.tsbuildinfo",
     "dev": "tsc -p tsconfig.json --watch",
-    "test": "bun test"
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "@keyring/typescript-config": "workspace:*",

@@ -1,0 +1,112 @@
+---
+title: CLI, local dev & agents
+description: "@usekeyring/cli — keyring dev (zero-config local Keyring + console), policy-as-code, embedded Postgres mode, MCP and agent setup."
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+```bash
+npx @usekeyring/cli init    # policy file, .gitignore, AGENTS.md, Claude skill, .mcp.json
+npx @usekeyring/cli dev     # local Keyring on http://localhost:4983 — console + /api/v1
+```
+
+`keyring dev` boots an **embedded Postgres** (PGlite, persisted in `.keyring/`), installs the native schema, mints a local root key, pushes `keyring.policy.json`, and opens the console. Save the policy file and it re-pushes. Other terminals' `keyring …` commands route through the running server automatically.
+
+The local server speaks the hosted wire format, so the normal SDK works unchanged:
+
+```ts
+const keyring = new Keyring({ baseUrl: "http://localhost:4983", apiKey: process.env.KEYRING_SECRET_KEY! });
+```
+
+## Targets
+
+Every command resolves one target (first match wins):
+
+| Flag / env | Target |
+| --- | --- |
+| `--local` | embedded local DB (`.keyring/`) |
+| `--base-url` / `KEYRING_BASE_URL` | hosted Management API |
+| `--database-url` / `KEYRING_DATABASE_URL` / `DATABASE_URL` | your Postgres (`keyring` schema) |
+| _(nothing)_ | embedded local DB |
+
+The key comes from `--key`, `KEYRING_SECRET_KEY` or `KEYRING_API_KEY` (local mode uses `.keyring/local.json`). `.env.local`, `.env.development.local` and `.env` load automatically.
+
+## Your own Postgres (embedded mode)
+
+Like Better Auth, Keyring can live in **your** database with no hosted API in the request path:
+
+```bash
+DATABASE_URL=postgres://… npx @usekeyring/cli migrate     # idempotent; --print emits the SQL
+DATABASE_URL=postgres://… npx @usekeyring/cli bootstrap   # workspace + root key → .env.local
+npx @usekeyring/cli push
+```
+
+```ts
+import { Pool } from "pg";
+import { createKeyring } from "@usekeyring/sdk/postgres";
+
+export const keyring = createKeyring({
+  database: new Pool({ connectionString: process.env.DATABASE_URL }),
+  apiKey: process.env.KEYRING_SECRET_KEY!,
+});
+await keyring.assert(user.id, "invoices.refund");
+```
+
+`createKeyring` has the same methods and result shapes as `new Keyring(...)`. Any driver with `query(text, values)` works (`pg`, `@neondatabase/serverless`, PGlite). Each call is one `SELECT keyring.api_*()`; the key's SHA-256 is checked, and its scopes enforced, inside Postgres. Subject tokens and outbound webhook delivery stay hosted-only.
+
+<Callout type="warn">`migrate` installs `drizzle/native.sql` (the `keyring` schema). Never run it against the hosted Supabase project, which uses the incremental `drizzle/migrations/` chain.</Callout>
+
+## Policy as code: `keyring.policy.json`
+
+```json
+{
+  "$schema": "https://usekeyring.dev/schema/policy.json",
+  "actions": {
+    "invoices.read": "Read invoices",
+    "invoices.refund": { "name": "Refund invoices", "category": "Billing" }
+  },
+  "roles": {
+    "viewer": ["invoices.read"],
+    "finance": { "name": "Finance", "actions": ["invoices.*"] },
+    "admin": ["*"]
+  },
+  "defaultRole": "viewer",
+  "spaces": {
+    "acme": { "name": "Acme", "actions": { "tickets.close": "Close tickets" }, "roles": { "agent": ["tickets.close"] } }
+  }
+}
+```
+
+- `keyring push --dry-run` validates the file (errors point at JSON paths) and prints the diff.
+- `keyring push` is additive. `--prune` also deletes roles, actions and links the file dropped, and needs `--yes` when it would delete anything.
+- `keyring pull` exports the live model, so changes made in the console come back into the file.
+- `keyring generate` writes `keyring.gen.ts` with `Action` / `Role` / `Space` unions, so a typo'd slug fails to compile.
+
+## Command reference
+
+| Command | Does |
+| --- | --- |
+| `init` | Scaffold policy, `.gitignore`, AGENTS.md block, `.claude/skills/keyring`, MCP config (Claude Code / Cursor / VS Code) |
+| `dev` | Local Keyring + console + `/api/v1`, watches the policy file (`--port`, `--reset`, `--no-open`) |
+| `studio` / `console` | Console against the current target (your Postgres, or opens the hosted dashboard) |
+| `migrate` · `bootstrap` | Install schema · create workspace + root key |
+| `push` · `pull` · `generate` · `schema` | Policy as code |
+| `check <subject> <action>` | Exit **0** allowed, **1** denied, **2** error (`--space`, `--context`) |
+| `grant` · `revoke` · `provision` · `attrs` | Change access (`--ttl`, `--expires`, `--condition`) |
+| `access <subject>` | Roles, effective actions, grants: the "why" |
+| `roles` · `actions` · `spaces` · `subjects` · `events [-f]` | Inspect; `events -f` tails decisions |
+| `keys [create|revoke]` | Scoped API keys (`--scopes check,grants.write`, `--publishable`) |
+| `whoami` · `doctor` | Effective target/key/scopes · checks every link and prints the fix |
+| `mcp` | MCP server over stdio against any target |
+| `docs` · `commands` | Agent guide (also at `/llms.txt`) · full command manifest as JSON |
+
+## Built for agents
+
+- **JSON by default when piped.** Output is JSON whenever stdout isn't a TTY, or when `--json` is passed. Errors are `{ "ok": false, "error": { "code", "message", "hint" } }`, and `hint` is the next command to run.
+- **Discoverable.** `keyring commands --json` returns every command, argument, flag and exit code.
+- **Safe by construction.** Destructive pushes need `--yes`. Every mutating command is idempotent. Secrets are redacted in `whoami` and `doctor`.
+- **In-repo context.** `keyring init` writes a managed AGENTS.md block and a Claude Code skill, and registers `npx -y @usekeyring/cli mcp` so Claude Code, Cursor and VS Code agents get `check_access`, `get_subject_access`, `grant_role` and the other tools.
+
+```bash
+claude mcp add keyring -- npx -y @usekeyring/cli mcp
+```

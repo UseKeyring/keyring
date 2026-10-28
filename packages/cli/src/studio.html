@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keyring Studio</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='12' cy='16' r='7' fill='none' stroke='black' stroke-width='3'/><path d='M19 16h11M26 16v5' stroke='black' stroke-width='3'/></svg>">
+<style>
+:root {
+  --canvas: #ffffff; --ink: #000000; --text: #4c4f69; --muted: #8c8fa1; --card: #f7f7f7;
+  --line: #e6e6e6; --link: #1e66f5; --ok: #40a02b; --bad: #d20f39; --warn: #df8e1d;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: ui-sans-serif, -apple-system, "Inter", "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0b0b0c; --ink: #ffffff; --text: #cdd0dc; --muted: #7f8494; --card: #151517;
+    --line: #26262a; --link: #7aa2ff; --ok: #6ccf55; --bad: #ff6b81; --warn: #f2b14c;
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: #0b0b0c; --ink: #ffffff; --text: #cdd0dc; --muted: #7f8494; --card: #151517;
+  --line: #26262a; --link: #7aa2ff; --ok: #6ccf55; --bad: #ff6b81; --warn: #f2b14c;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--canvas); color: var(--text); font: 14px/1.5 var(--sans); }
+a { color: var(--link); text-decoration: none; }
+code, pre, .mono { font-family: var(--mono); font-size: 12.5px; }
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+nav { border-right: 1px solid var(--line); padding: 20px 12px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; }
+.brand { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 600; font-size: 15px; padding: 0 10px 18px; }
+.brand small { color: var(--muted); font-weight: 400; }
+nav button { all: unset; cursor: pointer; padding: 7px 12px; border-radius: 9999px; color: var(--text); }
+nav button:hover { background: var(--card); }
+nav button.on { background: var(--ink); color: var(--canvas); }
+nav .foot { margin-top: auto; padding: 10px; font-size: 12px; color: var(--muted); word-break: break-all; }
+main { padding: 24px 32px 64px; min-width: 0; max-width: 1180px; }
+header.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+header.top h1 { margin: 0; font-size: 22px; color: var(--ink); font-weight: 600; letter-spacing: -0.01em; }
+.grow { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 9999px; font-size: 12px; white-space: nowrap; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); } .pill.dark { background: var(--ink); color: var(--canvas); border-color: var(--ink); }
+.btn { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 9999px; background: var(--ink); color: var(--canvas); font-weight: 500; font-size: 13px; white-space: nowrap; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn.danger { background: transparent; color: var(--bad); border: 1px solid var(--line); }
+.btn.sm { padding: 4px 12px; font-size: 12px; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: default; }
+input, select, textarea { font: inherit; color: var(--ink); background: var(--canvas); border: 1px solid var(--line); border-radius: 0; padding: 8px 10px; min-width: 0; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--link); outline-offset: -1px; }
+textarea { font-family: var(--mono); font-size: 12.5px; width: 100%; resize: vertical; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 28px; }
+.card { background: var(--card); padding: 16px; }
+.card .n { font-size: 28px; color: var(--ink); font-weight: 600; letter-spacing: -0.02em; }
+.card .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.panel { border: 1px solid var(--line); padding: 18px; margin-bottom: 20px; }
+.panel h2 { margin: 0 0 12px; font-size: 14px; color: var(--ink); font-weight: 600; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row > input, .row > select { flex: 1 1 160px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr.click { cursor: pointer; } tr.click:hover td { background: var(--card); }
+.chip { display: inline-block; font-family: var(--mono); font-size: 11.5px; background: var(--card); padding: 1px 8px; border-radius: 9999px; margin: 1px 3px 1px 0; color: var(--ink); }
+.muted { color: var(--muted); }
+.ink { color: var(--ink); }
+.verdict { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; }
+.verdict.ok { color: var(--ok); } .verdict.bad { color: var(--bad); }
+pre.code { background: var(--card); padding: 12px 14px; overflow-x: auto; margin: 8px 0 0; color: var(--ink); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.ops div { font-family: var(--mono); font-size: 12.5px; padding: 3px 0; }
+.op-create, .op-link { color: var(--ok); } .op-update, .op-set_default { color: var(--warn); } .op-delete, .op-unlink { color: var(--bad); }
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--ink); color: var(--canvas); padding: 10px 16px; border-radius: 9999px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100vw - 40px); }
+.toast.show { opacity: 1; } .toast.err { background: var(--bad); color: #fff; }
+.secret { font-family: var(--mono); background: var(--card); padding: 10px 12px; word-break: break-all; color: var(--ink); border-left: 3px solid var(--warn); }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 12px; margin: 8px 0; }
+.checks label { display: flex; gap: 6px; align-items: center; font-family: var(--mono); font-size: 12px; }
+.empty { padding: 28px; text-align: center; color: var(--muted); background: var(--card); }
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; }
+  nav { position: static; height: auto; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 16px; }
+  nav .brand { padding: 0 8px 0 0; } nav .foot { display: none; }
+  main { padding: 18px 16px 48px; }
+  .split { grid-template-columns: 1fr; }
+  table { display: block; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav id="nav">
+    <div class="brand"><svg width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><circle cx="12" cy="16" r="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M19 16h11M26 16v5" stroke="currentColor" stroke-width="3"/></svg>keyring <small>studio</small></div>
+    <div class="foot" id="foot"></div>
+  </nav>
+  <main>
+    <header class="top">
+      <h1 id="title">Overview</h1>
+      <span class="grow"></span>
+      <span class="pill" id="mode">…</span>
+      <select id="space" title="Scope"><option value="">Platform scope</option></select>
+    </header>
+    <div id="view"></div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const TOKEN = "__KEYRING_TOKEN__";
+const VIEWS = ["Overview", "Policy", "Roles", "Actions", "Subjects", "Playground", "Events", "Keys"];
+const state = { view: location.hash.slice(1) || "Overview", space: "", info: null, timer: null };
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const sp = () => state.space || undefined;
+const ago = (t) => { if (!t) return ""; const s = (Date.now() - new Date(t)) / 1000; return s < 60 ? `${Math.max(1, s | 0)}s ago` : s < 3600 ? `${(s / 60) | 0}m ago` : s < 86400 ? `${(s / 3600) | 0}h ago` : new Date(t).toLocaleDateString(); };
+const chips = (xs) => (xs || []).map((x) => `<span class="chip">${esc(x)}</span>`).join("") || '<span class="muted">—</span>';
+
+async function call(target, method, ...args) {
+  const res = await fetch("/_keyring/rpc", { method: "POST", headers: { "content-type": "application/json", "x-keyring-token": TOKEN }, body: JSON.stringify({ target, method, args }) });
+  const body = await res.json();
+  if (!body.ok) { const e = new Error(body.error?.message || "error"); e.hint = body.error?.hint; throw e; }
+  return body.result;
+}
+const K = (m, ...a) => call("keyring", m, ...a);
+const A = (m, ...a) => call("admin", m, ...a);
+const S = (m, ...a) => call("studio", m, ...a);
+
+function toast(msg, err) { const t = $("#toast"); t.textContent = msg; t.className = `toast show${err ? " err" : ""}`; clearTimeout(t._h); t._h = setTimeout(() => (t.className = "toast"), err ? 5000 : 2200); }
+async function guard(fn) { try { return await fn(); } catch (e) { toast(e.message + (e.hint ? ` — ${e.hint}` : ""), true); } }
+
+function nav() {
+  const n = $("#nav"); n.querySelectorAll("button").forEach((b) => b.remove());
+  const foot = $("#foot");
+  for (const v of VIEWS) { const b = document.createElement("button"); b.textContent = v; b.className = v === state.view ? "on" : ""; b.onclick = () => go(v); n.insertBefore(b, foot); }
+}
+function go(v) { state.view = v; location.hash = v; clearInterval(state.timer); nav(); render(); }
+
+async function boot() {
+  state.info = await call("studio", "info");
+  $("#mode").textContent = `${state.info.mode} · ${state.info.workspace.slug}`;
+  $("#mode").className = `pill ${state.info.mode === "local" ? "" : "dark"}`;
+  $("#foot").innerHTML = `${esc(state.info.target)}<br><br><a href="/llms.txt">llms.txt</a> · API <span class="mono">${esc(location.origin)}/api/v1</span>`;
+  await loadSpaces();
+  $("#space").onchange = (e) => { state.space = e.target.value; render(); };
+  nav(); render();
+}
+async function loadSpaces() {
+  const spaces = await K("listSpaces").catch(() => []);
+  $("#space").innerHTML = `<option value="">Platform scope</option>` + spaces.map((s) => `<option value="${esc(s.slug)}" ${s.slug === state.space ? "selected" : ""}>${esc(s.name)} (${esc(s.slug)})</option>`).join("");
+}
+
+async function render() {
+  $("#title").textContent = state.view;
+  const view = $("#view");
+  view.innerHTML = '<div class="muted">Loading…</div>';
+  try { await ({ Overview, Policy, Roles, Actions, Subjects, Playground, Events, Keys }[state.view] || Overview)(view); }
+  catch (e) { view.innerHTML = `<div class="panel"><h2>Something broke</h2><p class="ink">${esc(e.message)}</p>${e.hint ? `<p class="muted">${esc(e.hint)}</p>` : ""}</div>`; }
+}
+
+// ── views ──────────────────────────────────────────────────────────────
+async function Overview(el) {
+  const [o, events] = await Promise.all([A("overview"), A("events", { limit: 8 })]);
+  const c = o.counts;
+  const stat = (n, l) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  el.innerHTML = `
+    <div class="cards">${stat(c.roles, "Roles")}${stat(c.actions, "Actions")}${stat(c.subjects, "Subjects")}${stat(c.grants, "Active grants")}${stat(c.spaces, "Spaces")}${stat(c.checks_24h, "Checks 24h")}${stat(c.denied_24h, "Denied 24h")}</div>
+    <div class="split">
+      <div class="panel"><h2>Use it from your app</h2>
+        <div class="muted">Point the SDK at this ${esc(state.info.mode)} instance — same API as hosted.</div>
+        <pre class="code">import { Keyring } from "@usekeyring/sdk";
+
+const keyring = new Keyring({
+  baseUrl: "${esc(location.origin)}",
+  apiKey: process.env.KEYRING_SECRET_KEY!,
+});
+await keyring.check("user_123", "projects.read");</pre>
+        <div class="muted" style="margin-top:10px">Or embed it on your own Postgres with <code>createKeyring()</code> from <code>@usekeyring/sdk/postgres</code>.</div>
+      </div>
+      <div class="panel"><h2>Recent checks</h2>${eventsTable(events)}</div>
+    </div>`;
+}
+
+function eventsTable(rows) {
+  if (!rows.length) return '<div class="empty">No checks yet. Try the <a href="#Playground" onclick="go(\'Playground\')">Playground</a> or <code>keyring check user_1 projects.read</code>.</div>';
+  return `<table><tr><th></th><th>Subject</th><th>Action</th><th>Via</th><th>When</th></tr>${rows.map((e) => `<tr><td><span class="pill ${e.allowed ? "ok" : "bad"}">${e.allowed ? "allow" : "deny"}</span></td><td class="mono ink">${esc(e.subject)}</td><td class="mono">${esc(e.action)}${e.space ? `<span class="muted">@${esc(e.space)}</span>` : ""}</td><td>${chips(e.via)}</td><td class="muted">${ago(e.created_at)}</td></tr>`).join("")}</table>`;
+}
+
+async function Policy(el) {
+  const fileText = await S("policyText");
+  const pulled = fileText ? null : (await S("pull")).policy;
+  el.innerHTML = `
+    <div class="panel"><h2>keyring.policy.json</h2>
+      <div class="muted" style="margin-bottom:10px">${state.info.policyPath ? `Editing <code>${esc(state.info.policyPath)}</code> — pushing here writes the file too.` : "No policy file in this project; showing the live model."} Plan first, then push.</div>
+      <textarea id="pol" rows="22" spellcheck="false">${esc(fileText ?? JSON.stringify(pulled, null, 2))}</textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn ghost" id="plan">Plan (dry run)</button>
+        <button class="btn" id="push">Push</button>
+        <label class="row muted" style="gap:6px"><input type="checkbox" id="prune"> prune (delete what the file dropped)</label>
+        <span class="grow"></span>
+        <button class="btn ghost sm" id="pull">Replace with live model</button>
+      </div>
+    </div>
+    <div class="panel" id="planOut" hidden><h2>Plan</h2><div class="ops" id="ops"></div></div>`;
+  const parse = () => { try { return JSON.parse($("#pol").value); } catch (e) { throw new Error(`Invalid JSON: ${e.message}`); } };
+  const showOps = (r, applied) => {
+    $("#planOut").hidden = false;
+    const sym = { create: "+", link: "+", update: "~", set_default: "~", delete: "-", unlink: "-" };
+    $("#ops").innerHTML = (r.ops.length ? r.ops.map((o) => `<div class="op-${o.op}">${sym[o.op]} ${o.op} ${o.kind} ${esc(o.slug ?? "(none)")}${o.action ? ` → ${esc(o.action)}` : ""}${o.space ? ` <span class="muted">@${esc(o.space)}</span>` : ""}</div>`).join("") : '<div class="muted">In sync — nothing to do.</div>')
+      + (r.warnings || []).map((w) => `<div class="muted">! ${esc(w)}</div>`).join("")
+      + (applied ? `<div class="ink" style="margin-top:8px">Applied ${r.ops.length} change(s).</div>` : "");
+  };
+  $("#plan").onclick = () => guard(async () => showOps(await S("plan", parse(), $("#prune").checked)));
+  $("#push").onclick = () => guard(async () => { const r = await S("push", parse(), $("#prune").checked); showOps(r, true); toast("Policy pushed"); loadSpaces(); });
+  $("#pull").onclick = () => guard(async () => { $("#pol").value = JSON.stringify((await S("pull")).policy, null, 2); });
+}
+
+async function Roles(el) {
+  const [roles, actions] = await Promise.all([A("roleDetails", state.space || null), K("listPermissions", sp())]);
+  el.innerHTML = `
+    <div class="panel"><h2>Roles ${state.space ? `in ${esc(state.space)}` : ""}</h2>
+      ${roles.length ? `<table><tr><th>Role</th><th>Actions</th><th>Holders</th><th></th></tr>${roles.map((r) => `<tr><td><div class="ink">${esc(r.name)} ${r.is_default ? '<span class="pill">default</span>' : ""}</div><div class="mono muted">${esc(r.slug)}</div>${r.description ? `<div class="muted">${esc(r.description)}</div>` : ""}</td><td>${chips(r.actions)}</td><td>${r.holders}</td><td>${r.is_default ? "" : `<button class="btn ghost sm" data-def="${esc(r.slug)}">Make default</button>`}</td></tr>`).join("")}</table>` : '<div class="empty">No roles yet — add them to keyring.policy.json and push, or create one below.</div>'}
+    </div>
+    <div class="panel"><h2>New role</h2>
+      <div class="row"><input id="rs" placeholder="slug (support-lead)"><input id="rn" placeholder="Name"><input id="rd" placeholder="Description (optional)"></div>
+      <div class="checks">${actions.map((a) => `<label><input type="checkbox" value="${esc(a.slug)}"> ${esc(a.slug)}</label>`).join("") || '<span class="muted">Create actions first.</span>'}</div>
+      <button class="btn" id="mk">Create role</button>
+      <div class="muted" style="margin-top:8px">Tip: changes made here drift from keyring.policy.json — <code>keyring pull</code> brings them back into the file.</div>
+    </div>`;
+  el.querySelectorAll("[data-def]").forEach((b) => (b.onclick = () => guard(async () => { await A("setDefaultRole", b.dataset.def, state.space || null); toast("Default role set"); render(); })));
+  $("#mk").onclick = () => guard(async () => {
+    const permissions = [...el.querySelectorAll(".checks input:checked")].map((i) => i.value);
+    await K("createRole", { slug: $("#rs").value.trim(), name: $("#rn").value.trim() || $("#rs").value.trim(), description: $("#rd").value.trim() || undefined, permissions, space: sp() });
+    toast("Role saved"); render();
+  });
+}
+
+async function Actions(el) {
+  const actions = await K("listPermissions", sp());
+  const byCat = {}; for (const a of actions) (byCat[a.category] ||= []).push(a);
+  el.innerHTML = `
+    <div class="panel"><h2>Actions ${state.space ? `in ${esc(state.space)}` : ""}</h2>
+      ${actions.length ? Object.entries(byCat).map(([cat, list]) => `<div style="margin-bottom:14px"><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.04em">${esc(cat)}</div><table>${list.map((a) => `<tr><td class="mono ink" style="width:40%">${esc(a.slug)}</td><td>${esc(a.name)}${a.description ? ` <span class="muted">— ${esc(a.description)}</span>` : ""}</td></tr>`).join("")}</table></div>`).join("") : '<div class="empty">No actions yet.</div>'}
+    </div>
+    <div class="panel"><h2>New action</h2>
+      <div class="row"><input id="as" placeholder="slug (invoices.refund)"><input id="an" placeholder="Name"><input id="ac" placeholder="Category (General)"></div>
+      <div style="margin-top:10px"><button class="btn" id="mk">Create action</button></div>
+    </div>`;
+  $("#mk").onclick = () => guard(async () => { await K("createPermission", { slug: $("#as").value.trim(), name: $("#an").value.trim() || $("#as").value.trim(), category: $("#ac").value.trim() || undefined, space: sp() }); toast("Action saved"); render(); });
+}
+
+async function Subjects(el, selected) {
+  el.innerHTML = `<div class="split"><div><div class="row" style="margin-bottom:12px"><input id="q" placeholder="Search subjects…"><button class="btn ghost" id="add">+ Grant to new subject</button></div><div id="list"></div></div><div id="detail"><div class="empty">Select a subject.</div></div></div>`;
+  const load = async () => {
+    const rows = await A("listSubjects", { q: $("#q").value.trim() || undefined, limit: 200 });
+    $("#list").innerHTML = rows.length ? `<table><tr><th>Subject</th><th>Roles</th></tr>${rows.map((s) => `<tr class="click" data-s="${esc(s.subject)}"><td><div class="mono ink">${esc(s.subject)}</div>${s.display_name ? `<div class="muted">${esc(s.display_name)}</div>` : ""}</td><td>${chips(s.roles)}</td></tr>`).join("")}</table>` : '<div class="empty">No subjects yet. They appear on first grant or <code>provisionSubject()</code>.</div>';
+    $("#list").querySelectorAll("[data-s]").forEach((r) => (r.onclick = () => detail(r.dataset.s)));
+  };
+  const detail = async (id) => {
+    const [s, access, roles] = await Promise.all([A("subject", id), K("getSubjectAccess", id, sp()), K("listRoles", sp())]);
+    const d = $("#detail");
+    d.innerHTML = `<div class="panel"><h2 class="mono">${esc(id)}</h2>
+      ${s?.display_name ? `<div>${esc(s.display_name)}</div>` : ""}
+      <div class="muted" style="margin:8px 0 4px">Attributes (ABAC)</div><textarea id="attrs" rows="3">${esc(JSON.stringify(s?.attrs ?? {}, null, 2))}</textarea>
+      <button class="btn ghost sm" id="saveAttrs" style="margin-top:6px">Save attributes</button>
+      <div class="muted" style="margin:14px 0 4px">Grants</div>
+      ${(s?.grants || []).length ? `<table>${s.grants.map((g) => `<tr><td><span class="chip">${esc(g.role)}</span>${g.space ? `<span class="muted">@${esc(g.space)}</span>` : ""}</td><td class="muted">${g.expired ? '<span style="color:var(--bad)">expired</span>' : g.expires_at ? `until ${new Date(g.expires_at).toLocaleString()}` : "permanent"}${g.condition && Object.keys(g.condition).length ? ` · if <code>${esc(JSON.stringify(g.condition))}</code>` : ""}</td><td><button class="btn danger sm" data-rv="${esc(g.role)}" data-sp="${esc(g.space ?? "")}">Revoke</button></td></tr>`).join("")}</table>` : '<div class="muted">None.</div>'}
+      <div class="muted" style="margin:14px 0 4px">Effective access ${state.space ? `in ${esc(state.space)}` : "(platform)"}</div>${chips(access.permissions)}
+      <div class="muted" style="margin:14px 0 4px">Grant a role</div>
+      <div class="row"><select id="gr">${roles.map((r) => `<option>${esc(r.slug)}</option>`).join("")}</select><input id="gt" placeholder="TTL seconds (optional)" type="number" min="30"></div>
+      <div style="margin-top:8px"><button class="btn sm" id="grant">Grant</button></div></div>`;
+    d.querySelectorAll("[data-rv]").forEach((b) => (b.onclick = () => guard(async () => { await K("revokeRole", { role: b.dataset.rv, subject: id, space: b.dataset.sp || undefined }); toast("Revoked"); detail(id); load(); })));
+    $("#grant").onclick = () => guard(async () => { const ttl = Number($("#gt").value) || undefined; await K("grantRole", { role: $("#gr").value, subject: id, space: sp(), ttlSeconds: ttl }); toast("Granted"); detail(id); load(); });
+    $("#saveAttrs").onclick = () => guard(async () => { await K("setSubjectAttrs", { subject: id, attrs: JSON.parse($("#attrs").value || "{}") }); toast("Attributes merged"); });
+  };
+  $("#q").oninput = () => { clearTimeout(load._t); load._t = setTimeout(() => guard(load), 200); };
+  $("#add").onclick = () => { const id = prompt("Subject id (your user id):"); if (id) detail(id.trim()); };
+  await load();
+  if (selected) detail(selected);
+}
+
+async function Playground(el) {
+  const actions = await K("listPermissions", sp());
+  el.innerHTML = `
+    <div class="split">
+      <div class="panel"><h2>Can this subject do this?</h2>
+        <div class="row"><input id="ps" placeholder="subject (user_123)" value="${esc(localStorage.getItem("kr.ps") || "")}"></div>
+        <div class="row" style="margin-top:8px"><input id="pa" list="acts" placeholder="action (projects.read)" value="${esc(localStorage.getItem("kr.pa") || "")}"><datalist id="acts">${actions.map((a) => `<option value="${esc(a.slug)}">`).join("")}</datalist></div>
+        <div class="muted" style="margin:10px 0 4px">Request context (ABAC, optional)</div>
+        <textarea id="pc" rows="3" placeholder='{"plan": "pro"}'></textarea>
+        <div style="margin-top:10px"><button class="btn" id="run">Check</button></div>
+      </div>
+      <div class="panel" id="res"><h2>Result</h2><div class="muted">Run a check — it's logged to Events like production traffic.</div></div>
+    </div>`;
+  $("#run").onclick = () => guard(async () => {
+    const subject = $("#ps").value.trim(), action = $("#pa").value.trim();
+    try { localStorage.setItem("kr.ps", subject); localStorage.setItem("kr.pa", action); } catch {}
+    const ctxText = $("#pc").value.trim(); const context = ctxText ? JSON.parse(ctxText) : undefined;
+    const [r, access] = await Promise.all([K("check", subject, action, { space: sp(), context }), K("getSubjectAccess", subject, sp())]);
+    const spFlag = state.space ? ` --space ${state.space}` : "", ctxFlag = context ? ` --context '${JSON.stringify(context)}'` : "";
+    $("#res").innerHTML = `<h2>Result</h2><div class="verdict ${r.allowed ? "ok" : "bad"}">${r.allowed ? "Allowed" : "Denied"}</div>
+      <div class="muted" style="margin:8px 0 4px">Roles held</div>${chips(access.roles)}
+      ${!r.allowed ? `<div class="muted" style="margin-top:10px">${access.roles.length ? "None of these roles include" : "Subject holds no roles in this scope, so nothing grants"} <code>${esc(action)}</code>${context || access.roles.length ? " (or an ABAC condition failed)" : ""}.</div>` : ""}
+      <div class="muted" style="margin:14px 0 0">Same check from code / CLI</div>
+      <pre class="code">await keyring.check(${JSON.stringify(subject)}, ${JSON.stringify(action)}${state.space || context ? `, ${JSON.stringify({ ...(state.space ? { space: state.space } : {}), ...(context ? { context } : {}) })}` : ""});</pre>
+      <pre class="code">keyring check ${esc(subject)} ${esc(action)}${esc(spFlag)}${esc(ctxFlag)}</pre>`;
+  });
+}
+
+async function Events(el) {
+  el.innerHTML = `<div class="row" style="margin-bottom:12px"><input id="es" placeholder="Filter by subject"><label class="row muted" style="gap:6px;flex:0 0 auto"><input type="checkbox" id="ed"> denied only</label><span class="pill" id="live">live</span></div><div id="ev"></div>`;
+  const load = async () => { $("#ev").innerHTML = eventsTable(await A("events", { limit: 100, subject: $("#es").value.trim() || undefined, denied: $("#ed").checked })); };
+  $("#es").oninput = $("#ed").onchange = () => guard(load);
+  await load();
+  state.timer = setInterval(() => { if (!document.hidden) load().catch(() => {}); }, 2000);
+}
+
+async function Keys(el) {
+  const keys = await A("listKeys");
+  const scopes = ["check", "grants.write", "roles.read", "roles.write", "actions.read", "actions.write", "spaces.read", "spaces.write", "subject_tokens.write", "telemetry.read", "telemetry.write", "webhooks.read", "webhooks.write", "integrations.write"];
+  el.innerHTML = `
+    <div class="panel"><h2>API keys</h2>
+      <table><tr><th>Name</th><th>Key</th><th>Scopes</th><th>Last used</th><th></th></tr>${keys.map((k) => `<tr><td class="ink">${esc(k.name)} ${k.key_type === "publishable" ? '<span class="pill">publishable</span>' : ""}</td><td class="mono">${esc(k.prefix)}…</td><td>${k.scopes.length >= 14 ? '<span class="chip">all</span>' : chips(k.scopes)}</td><td class="muted">${k.revoked_at ? '<span style="color:var(--bad)">revoked</span>' : ago(k.last_used_at) || "never"}</td><td>${k.revoked_at ? "" : `<button class="btn danger sm" data-rk="${esc(k.id)}">Revoke</button>`}</td></tr>`).join("")}</table>
+    </div>
+    <div class="panel"><h2>New key</h2>
+      <div class="row"><input id="kn" placeholder="Name (e.g. api-server)"><label class="row muted" style="gap:6px;flex:0 0 auto"><input type="checkbox" id="kp"> publishable (check only)</label></div>
+      <div class="checks">${scopes.map((s) => `<label><input type="checkbox" value="${s}" ${s === "check" ? "checked" : ""}> ${s}</label>`).join("")}</div>
+      <button class="btn" id="mk">Create key</button><div id="newKey" style="margin-top:12px"></div>
+    </div>`;
+  el.querySelectorAll("[data-rk]").forEach((b) => (b.onclick = () => guard(async () => { if (!confirm("Revoke this key? Anything using it stops working.")) return; await A("revokeKey", b.dataset.rk); toast("Key revoked"); render(); })));
+  $("#mk").onclick = () => guard(async () => {
+    const r = await A("issueKey", { name: $("#kn").value.trim() || "key", publishable: $("#kp").checked, scopes: [...el.querySelectorAll(".checks input:checked")].map((i) => i.value) });
+    $("#newKey").innerHTML = `<div class="muted" style="margin-bottom:4px">Shown once — copy it now.</div><div class="secret">${esc(r.key)}</div>`;
+  });
+}
+
+boot().catch((e) => { $("#view").innerHTML = `<div class="panel"><h2>Can't reach Keyring</h2><p>${esc(e.message)}</p></div>`; });
+</script>
+</body>
+</html>
