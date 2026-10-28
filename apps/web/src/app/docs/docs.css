@@ -1,0 +1,680 @@
+/*
+ * Docs in the ASCII design system (tokens + primitives: ../ascii.css).
+ * Everything is scoped under `.ascii-docs` (the docs layout wrapper) and
+ * `.ascii-docs-portal` (put on <body> while docs are mounted, so fumadocs'
+ * portalled search dialog / popovers inherit the same scope).
+ *
+ * Fumadocs is styled almost entirely through --color-fd-* and Tailwind's
+ * --radius-* variables, so most of the restyle is remapping those onto
+ * --a-* tokens; the rest targets fumadocs' stable ids (#nd-sidebar,
+ * #nd-page, #nd-toc, #nd-subnav, #nd-tocnav, #nd-sidebar-mobile) and the
+ * kr-* hooks set in page.tsx / components/mdx.tsx. Unlayered, so it wins
+ * over Tailwind utilities without !important.
+ */
+
+/* ── token bridge ─────────────────────────────────────────────────────── */
+.ascii-docs,
+.ascii-docs-portal {
+  --color-fd-background: var(--a-bg);
+  --color-fd-foreground: var(--a-fg);
+  --color-fd-muted: var(--a-panel);
+  --color-fd-muted-foreground: var(--a-muted);
+  --color-fd-popover: var(--a-panel);
+  --color-fd-popover-foreground: var(--a-fg);
+  --color-fd-card: var(--a-panel);
+  --color-fd-card-foreground: var(--a-fg);
+  --color-fd-border: var(--a-line);
+  --color-fd-primary: var(--a-accent);
+  --color-fd-primary-foreground: var(--a-accent-fg);
+  --color-fd-secondary: var(--a-panel);
+  --color-fd-secondary-foreground: var(--a-fg);
+  --color-fd-accent: var(--a-raised);
+  --color-fd-accent-foreground: var(--a-fg);
+  --color-fd-ring: var(--a-accent);
+  --color-fd-info: var(--a-muted);
+  --color-fd-warning: var(--a-accent);
+  --color-fd-error: var(--a-bad);
+  --color-fd-success: var(--a-ok);
+
+  /* square-ish everywhere (rounded-full stays a circle) */
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+
+  /* landing Nav is the fumadocs "banner"; centre the reader on the
+     same 1200px railed column as the landing frame */
+  --fd-banner-height: 64px;
+  --fd-layout-width: 1200px;
+  --fd-page-width: 1200px;
+}
+
+.ascii-docs-portal {
+  min-height: 0;
+}
+
+/* no drop shadows in this system */
+.ascii-docs .shadow-sm,
+.ascii-docs .shadow-md,
+.ascii-docs .shadow-lg,
+.ascii-docs .shadow-xl,
+.ascii-docs-portal .shadow-sm,
+.ascii-docs-portal .shadow-md,
+.ascii-docs-portal .shadow-lg,
+.ascii-docs-portal .shadow-xl,
+.ascii-docs-portal .shadow-2xl {
+  box-shadow: none;
+}
+
+/* ── frame: the reader is the railed 1200px column ─────────────────────── */
+.ascii-docs #nd-docs-layout {
+  --fd-sidebar-width: 0px;
+  --fd-toc-width: 0px;
+  border-inline: 1px solid var(--a-line);
+  min-height: calc(100vh - var(--fd-banner-height));
+}
+@media (min-width: 768px) {
+  .ascii-docs #nd-docs-layout { --fd-sidebar-width: 248px; }
+}
+@media (min-width: 1024px) {
+  .ascii-docs #nd-docs-layout { --fd-sidebar-width: 256px; }
+}
+@media (min-width: 1280px) {
+  .ascii-docs #nd-docs-layout { --fd-toc-width: 232px; }
+}
+@media (max-width: 760px) {
+  .ascii-docs #nd-docs-layout { border-inline: 0; }
+}
+
+/* the landing Nav is position: sticky inside the wrapper; keep it above
+   fumadocs' fixed sidebar / toc */
+.ascii-docs > .navbar {
+  z-index: 40;
+}
+
+/* ── sidebar (desktop) ─────────────────────────────────────────────────── */
+.ascii-docs #nd-sidebar {
+  background: transparent;
+  border-color: var(--a-line);
+  font-size: 12.5px;
+}
+.ascii-docs #nd-sidebar[data-collapsed="true"] {
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  border: 1px solid var(--a-line-strong);
+}
+
+.kr-docs-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--a-fg);
+}
+.kr-docs-title-mark {
+  color: var(--a-accent);
+}
+
+/* search: a `.cmd`-style field */
+.ascii-docs [data-search-full] {
+  height: 36px;
+  border: 1px solid var(--a-line-strong);
+  border-radius: 2px;
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  color: var(--a-dim);
+  font-size: 12.5px;
+  padding-inline: 10px 6px;
+}
+.ascii-docs [data-search-full]:hover {
+  background-color: var(--a-raised);
+  color: var(--a-muted);
+  border-color: var(--a-muted);
+}
+.ascii-docs [data-search-full] kbd {
+  border: 1px solid var(--a-line-strong);
+  border-radius: 2px;
+  background: var(--a-bg);
+  color: var(--a-muted);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 18px;
+  padding: 0 5px;
+}
+
+/* nav items: mono, flat, active = accent rule + `›` */
+.ascii-docs #nd-sidebar a,
+.ascii-docs #nd-sidebar button,
+.ascii-docs #nd-sidebar-mobile a,
+.ascii-docs #nd-sidebar-mobile button {
+  border-radius: 0;
+}
+.ascii-docs #nd-sidebar [data-radix-scroll-area-viewport] a[data-active],
+.ascii-docs #nd-sidebar-mobile [data-radix-scroll-area-viewport] a[data-active] {
+  position: relative;
+  padding: 7px 10px 7px 22px;
+  color: var(--a-muted);
+  background: transparent;
+  transition: color 0.12s, background-color 0.12s;
+}
+.ascii-docs #nd-sidebar [data-radix-scroll-area-viewport] a[data-active]::before,
+.ascii-docs #nd-sidebar-mobile [data-radix-scroll-area-viewport] a[data-active]::before {
+  content: "·";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--a-dim);
+}
+.ascii-docs #nd-sidebar [data-radix-scroll-area-viewport] a[data-active]:hover,
+.ascii-docs #nd-sidebar-mobile [data-radix-scroll-area-viewport] a[data-active]:hover {
+  color: var(--a-fg);
+  background: var(--a-panel);
+}
+.ascii-docs #nd-sidebar [data-radix-scroll-area-viewport] a[data-active="true"],
+.ascii-docs #nd-sidebar-mobile [data-radix-scroll-area-viewport] a[data-active="true"] {
+  color: var(--a-fg);
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  box-shadow: inset 2px 0 0 var(--a-accent);
+}
+.ascii-docs #nd-sidebar [data-radix-scroll-area-viewport] a[data-active="true"]::before,
+.ascii-docs #nd-sidebar-mobile [data-radix-scroll-area-viewport] a[data-active="true"]::before {
+  content: "›";
+  color: var(--a-accent);
+}
+
+.kr-docs-sidelabel {
+  margin-top: 6px;
+  font-size: 11px !important;
+}
+
+.kr-docs-sidefoot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-dim);
+}
+.kr-docs-sidefoot a {
+  color: var(--a-muted);
+  transition: color 0.12s;
+}
+.kr-docs-sidefoot a:hover {
+  color: var(--a-fg);
+}
+.ascii-docs #nd-sidebar > div > div:last-child,
+.ascii-docs #nd-sidebar-mobile > div:last-child {
+  border-color: var(--a-line);
+}
+
+/* ── mobile: sub-nav bar, toc bar, drawer ──────────────────────────────── */
+.ascii-docs #nd-subnav,
+.ascii-docs #nd-tocnav {
+  background-color: color-mix(in oklab, var(--a-bg) 88%, transparent);
+  border-color: var(--a-line);
+}
+.ascii-docs #nd-tocnav {
+  font-size: 12px;
+}
+.ascii-docs #nd-tocnav button {
+  color: var(--a-muted);
+}
+.ascii-docs-portal #nd-sidebar-mobile,
+.ascii-docs #nd-sidebar-mobile {
+  background-color: var(--a-bg);
+  background-image: var(--a-noise-page);
+  background-size: 180px 180px;
+  border-color: var(--a-line-strong);
+  font-size: 13px;
+}
+
+/* ── page header ───────────────────────────────────────────────────────── */
+.ascii-docs #nd-page article {
+  gap: 0;
+}
+@media (min-width: 768px) {
+  .ascii-docs #nd-page article {
+    padding-top: 56px;
+  }
+}
+.kr-docs-crumb {
+  margin-bottom: 28px;
+}
+.kr-docs-crumb a:hover {
+  color: var(--a-fg);
+}
+.ascii-docs h1.kr-docs-h1 {
+  font-family: var(--a-font-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 300;
+  font-size: clamp(2.1rem, 4vw, 3rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  color: var(--a-fg);
+  text-wrap: balance;
+  margin: 0;
+}
+.ascii-docs p.kr-docs-lede {
+  font-family: var(--a-font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--a-muted);
+  max-width: 40rem;
+  margin: 18px 0 0;
+  padding-bottom: 36px;
+  border-bottom: 1px dashed var(--a-line-strong);
+  margin-bottom: 8px;
+  text-wrap: pretty;
+}
+
+/* ── prose ─────────────────────────────────────────────────────────────── */
+.ascii-docs .prose {
+  --tw-prose-body: color-mix(in oklab, var(--a-fg) 86%, var(--a-bg));
+  --tw-prose-headings: var(--a-fg);
+  --tw-prose-lead: var(--a-muted);
+  --tw-prose-links: var(--a-fg);
+  --tw-prose-bold: var(--a-fg);
+  --tw-prose-counters: var(--a-accent);
+  --tw-prose-bullets: var(--a-accent);
+  --tw-prose-hr: var(--a-line-strong);
+  --tw-prose-quotes: var(--a-fg);
+  --tw-prose-quote-borders: var(--a-line-strong);
+  --tw-prose-captions: var(--a-muted);
+  --tw-prose-code: var(--a-fg);
+  --tw-prose-th-borders: var(--a-line);
+  --tw-prose-td-borders: var(--a-line);
+  font-family: var(--a-font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15.5px;
+  line-height: 1.72;
+  color: var(--tw-prose-body);
+}
+
+.ascii-docs .prose :where(h2, h3, h4):not(:where(.not-prose *)) {
+  font-family: var(--a-font-display), ui-sans-serif, system-ui, sans-serif;
+  color: var(--a-fg);
+  text-wrap: balance;
+}
+.ascii-docs .prose h2:not(:where(.not-prose *)) {
+  font-weight: 400;
+  font-size: 1.65rem;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin-top: 3.2rem;
+  margin-bottom: 1rem;
+}
+.ascii-docs .prose h2:not(:where(.not-prose *))::before {
+  content: "##";
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--a-accent);
+  align-self: center;
+  flex-shrink: 0;
+}
+.ascii-docs .prose h3:not(:where(.not-prose *)) {
+  font-weight: 400;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+  margin-top: 2.2rem;
+}
+.ascii-docs .prose h3:not(:where(.not-prose *))::before {
+  content: "###";
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--a-dim);
+  align-self: center;
+  flex-shrink: 0;
+}
+.ascii-docs .prose :where(h2, h3, h4) svg {
+  color: var(--a-dim);
+}
+
+.ascii-docs .prose strong {
+  font-weight: 500;
+}
+
+/* links: fg with an accent underline (ascii.css resets `a` colour) */
+.ascii-docs .prose a:not([data-card]):not(:where(.not-prose *)) {
+  color: var(--a-fg);
+  font-weight: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--a-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color 0.12s;
+}
+.ascii-docs .prose a:not([data-card]):not(:where(.not-prose *)):hover {
+  color: var(--a-accent);
+}
+
+/* inline code */
+.ascii-docs .prose :not(pre) > code {
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 0.8em;
+  font-weight: 400;
+  padding: 1px 5px;
+  border: 1px solid var(--a-line);
+  border-radius: 2px;
+  background: var(--a-panel);
+  color: var(--a-fg);
+}
+.ascii-docs .prose :not(pre) > code::before,
+.ascii-docs .prose :not(pre) > code::after {
+  content: none;
+}
+
+/* `+` bullets, mono counters */
+.ascii-docs .prose ul:not(:where(.not-prose *)) > li {
+  list-style: none;
+  position: relative;
+  padding-inline-start: 1.4em;
+}
+.ascii-docs .prose ul:not(:where(.not-prose *)) > li::before {
+  content: "+";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  color: var(--a-accent);
+}
+.ascii-docs .prose ul:not(:where(.not-prose *)) {
+  padding-inline-start: 0.2em;
+}
+.ascii-docs .prose ol > li::marker {
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 0.85em;
+  color: var(--a-accent);
+}
+
+.ascii-docs .prose hr {
+  border: 0;
+  border-top: 1px dashed var(--a-line-strong);
+}
+.ascii-docs .prose blockquote {
+  border-inline-start: 2px solid var(--a-line-strong);
+  font-style: normal;
+  color: var(--a-muted);
+}
+
+/* tables: shared-border cells, label headers, mono body */
+.ascii-docs .prose table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--a-line);
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  margin: 0;
+}
+.ascii-docs .prose thead {
+  border-bottom: 1px solid var(--a-line-strong);
+}
+.ascii-docs .prose th {
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--a-muted);
+  text-align: start;
+  padding: 10px 14px;
+  border: 1px solid var(--a-line);
+}
+.ascii-docs .prose td {
+  padding: 10px 14px;
+  border: 1px solid var(--a-line);
+  vertical-align: top;
+  color: var(--a-fg);
+}
+.ascii-docs .prose td code,
+.ascii-docs .prose th code {
+  font-size: 0.95em;
+}
+.ascii-docs .prose tbody tr:hover td {
+  background: color-mix(in oklab, var(--a-panel) 70%, transparent);
+}
+
+/* ── code blocks: `.win` (panel + grain, hatched title bar) ────────────── */
+.ascii-docs figure.shiki {
+  border: 1px solid var(--a-line-strong);
+  border-radius: 2px;
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  box-shadow: none;
+  margin: 1.5rem 0;
+}
+.ascii-docs figure.shiki > div:first-child:has(figcaption) {
+  height: 36px;
+  padding-inline: 14px 8px;
+  border-bottom: 1px solid var(--a-line);
+  background-color: var(--a-panel);
+  background-image: repeating-linear-gradient(-45deg, var(--a-line) 0 1px, transparent 1px 7px);
+  color: var(--a-muted);
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+}
+.ascii-docs figure.shiki figcaption {
+  flex: 0 1 auto;
+  padding: 0 8px;
+  margin-inline-start: -8px;
+  background: var(--a-panel);
+}
+.ascii-docs figure.shiki figcaption .kr-code-lang {
+  color: var(--a-accent);
+}
+.ascii-docs figure.shiki > div:first-child:has(figcaption)::after {
+  content: "";
+  flex: 1;
+}
+.ascii-docs figure.shiki > div:first-child:has(figcaption) > div:last-child {
+  order: 3;
+  background: var(--a-panel);
+}
+.ascii-docs figure.shiki button[aria-label^="Cop"] {
+  border-radius: 2px;
+  color: var(--a-muted);
+}
+.ascii-docs figure.shiki button[aria-label^="Cop"]:hover {
+  background: var(--a-raised);
+  color: var(--a-fg);
+}
+.ascii-docs figure.shiki pre,
+.ascii-docs figure.shiki code {
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+}
+.ascii-docs figure.shiki > div:last-child {
+  font-size: 12.5px;
+  line-height: 1.75;
+  padding-block: 16px 18px;
+}
+
+/* ── callouts: `.notice` with a left rule coloured by type ─────────────── */
+.ascii-docs div[style*="--callout-color"] {
+  gap: 10px;
+  margin: 1.5rem 0;
+  padding: 14px 16px 14px 14px;
+  border: 1px solid var(--a-line);
+  border-inline-start: 2px solid var(--callout-color, var(--a-line-strong));
+  border-radius: 2px;
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  box-shadow: none;
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--a-fg);
+}
+.ascii-docs div[style*="--callout-color"] > [role="none"] {
+  display: none;
+}
+.ascii-docs div[style*="--callout-color"] > svg {
+  margin-top: 2px;
+  color: var(--callout-color, var(--a-muted));
+}
+.ascii-docs div[style*="--callout-color"] > div > p:first-child:not(:last-child) {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--a-fg);
+}
+.ascii-docs div[style*="--callout-color"] > div > div {
+  color: var(--a-muted);
+}
+.ascii-docs div[style*="--callout-color"] code {
+  font-size: 0.95em !important;
+  background: var(--a-bg) !important;
+}
+
+/* steps: square counters */
+.ascii-docs .fd-step::before {
+  border-radius: 2px;
+  border: 1px solid var(--a-line-strong);
+  background: var(--a-panel);
+  color: var(--a-accent);
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 12px;
+}
+.ascii-docs .fd-steps {
+  border-color: var(--a-line);
+  border-left-style: dashed;
+}
+
+/* cards (MDX <Cards>) */
+.ascii-docs .prose [data-card] {
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+/* ── prev / next: blocky shared-border cells ───────────────────────────── */
+.kr-docs-footer {
+  gap: 1px !important;
+  margin-top: 56px;
+  padding-bottom: 0 !important;
+  border: 1px solid var(--a-line);
+  background: var(--a-line);
+}
+.kr-docs-footer > a {
+  border: 0;
+  border-radius: 0;
+  background: var(--a-bg);
+  padding: 20px 22px;
+  gap: 6px;
+  transition: background-color 0.12s;
+}
+.kr-docs-footer > a:hover {
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+}
+.kr-docs-footer > a > div {
+  font-family: var(--a-font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--a-fg);
+}
+.kr-docs-footer > a > div svg {
+  color: var(--a-accent);
+}
+.kr-docs-footer > a > p:last-child {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--a-dim);
+}
+.kr-docs-colophon {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 28px;
+  padding: 16px 0 40px;
+  border-top: 1px solid var(--a-line);
+  font-size: 11.5px;
+  color: var(--a-dim);
+}
+.kr-docs-colophon a:hover {
+  color: var(--a-fg);
+}
+
+/* ── toc ───────────────────────────────────────────────────────────────── */
+.ascii-docs #nd-toc {
+  border-inline-start: 1px solid var(--a-line);
+  padding-top: 56px;
+}
+.ascii-docs #nd-toc > div {
+  padding-inline: 20px 16px;
+}
+.ascii-docs #nd-toc h3 {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--a-muted);
+  margin-bottom: 10px;
+}
+.ascii-docs #nd-toc h3 svg {
+  display: none;
+}
+.ascii-docs #nd-toc h3::before {
+  content: "[#]";
+  color: var(--a-accent);
+  margin-inline-end: 6px;
+}
+.ascii-docs #nd-toc a,
+.ascii-docs #nd-tocnav a {
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ascii-docs #nd-toc code,
+.ascii-docs #nd-tocnav code {
+  font-size: 1em;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+/* ── search dialog (portalled into body) ───────────────────────────────── */
+.ascii-docs-portal [role="dialog"] {
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+}
+.ascii-docs-portal [role="dialog"]:not(#nd-sidebar-mobile) {
+  border-radius: 2px;
+  border: 1px solid var(--a-line-strong);
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+}
+.ascii-docs-portal [role="dialog"] input {
+  font-family: inherit;
+  font-size: 13.5px;
+}
+.ascii-docs-portal [role="dialog"] kbd,
+.ascii-docs-portal [role="dialog"] button {
+  border-radius: 2px;
+}
+.ascii-docs-portal [role="dialog"] [aria-selected="true"] {
+  background: var(--a-raised);
+  color: var(--a-fg);
+  box-shadow: inset 2px 0 0 var(--a-accent);
+}
