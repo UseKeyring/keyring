@@ -222,6 +222,38 @@ pre.code { background-color: var(--a-panel); background-image: var(--a-noise); b
 @media (max-width: 760px) { .cards.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
 @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } .hbar { grid-template-columns: minmax(0, 110px) 1fr auto; } }
+
+/* ── search trigger + command palette ── */
+.search-btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; height: 34px; min-width: 240px; padding: 0 6px 0 10px; border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-panel); background-image: var(--a-noise); background-size: 180px; color: var(--a-dim); font: 12.5px var(--a-font-mono); }
+.search-btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.search-btn span { flex: 1; }
+.search-btn:hover { color: var(--a-muted); border-color: var(--a-muted); }
+.search-btn:focus-visible { outline: none; border-color: var(--a-accent); }
+kbd { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--a-line-strong); border-radius: 2px; background: var(--a-bg); color: var(--a-muted); font: 11px var(--a-font-mono); }
+.cmdk-back { align-items: start; padding-top: 12vh; }
+.cmdk { width: min(620px, 100%); border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-bg); background-image: var(--a-noise); background-size: 180px; overflow: hidden; animation: kr-rise .14s ease-out; }
+.cmdk-in { display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid var(--a-line); }
+.cmdk-in svg { width: 17px; height: 17px; color: var(--a-muted); flex: 0 0 auto; }
+.cmdk-in input { flex: 1; height: 52px; border: 0; background: transparent; padding: 0; font: 15px var(--a-font-display); }
+.cmdk-in input:focus { border: 0; }
+.cmdk-list { max-height: min(420px, 56vh); overflow-y: auto; padding: 6px; }
+.cmdk-group { padding: 10px 10px 6px; font: 12px var(--a-font-display); color: var(--a-dim); }
+.cmdk-item { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 10px; border-radius: 2px; color: var(--a-fg); font: 14px var(--a-font-display); cursor: pointer; }
+.cmdk-item svg { width: 17px; height: 17px; flex: 0 0 auto; color: var(--a-muted); }
+.cmdk-item .hint { margin-left: auto; font: 11.5px var(--a-font-mono); color: var(--a-dim); white-space: nowrap; }
+.cmdk-item mark { background: none; color: var(--a-accent); }
+.cmdk-item.active { background: var(--a-raised); }
+.cmdk-item.active svg { color: var(--a-accent); }
+.cmdk-empty { padding: 28px 12px; text-align: center; color: var(--a-dim); font-size: 12.5px; }
+.cmdk-foot { display: flex; gap: 16px; padding: 9px 12px; border-top: 1px solid var(--a-line); font-size: 11px; color: var(--a-dim); }
+.cmdk-foot kbd { height: 18px; margin-right: 5px; }
+/* footer status + theme */
+nav .foot { flex-direction: row !important; align-items: flex-end; justify-content: space-between; gap: 10px; }
+#foot { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.foot-row b { font-weight: 400; color: var(--a-fg); }
+.foot-row .live, .live { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--a-ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-ok) 18%, transparent); vertical-align: middle; }
+nav #theme { width: 28px; height: 28px; flex: 0 0 auto; }
+@media (max-width: 760px) { .search-btn { min-width: 0; } .search-btn span, .search-btn kbd { display: none; } }
 </style>
 </head>
 <body class="ascii">
@@ -231,14 +263,16 @@ pre.code { background-color: var(--a-panel); background-image: var(--a-noise); b
       <select id="space" title="Switch scope" data-variant="card" data-kicker="Keyring studio"><option value="">Platform scope</option></select>
     </div>
     <div id="navlist"></div>
-    <div class="foot" id="foot"></div>
+    <div class="foot"><div id="foot"></div><button id="theme" type="button" aria-label="Toggle theme" title="Toggle theme"></button></div>
   </nav>
   <main>
     <header class="top">
       <h1 id="title">Overview</h1>
       <span class="grow"></span>
-      <span class="pill" id="mode">…</span>
-      <button id="theme" type="button" aria-label="Toggle theme" title="Toggle theme"></button>
+      <button id="cmdk-open" class="search-btn" type="button" aria-label="Search and run commands" aria-keyshortcuts="Meta+K Control+K">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+        <span>Search…</span><kbd id="cmdk-kbd">⌘K</kbd>
+      </button>
     </header>
     <div id="view"></div>
   </main>
@@ -311,17 +345,14 @@ function go(v) { state.view = v; location.hash = v; clearInterval(state.timer); 
 
 async function boot() {
   state.info = await call("studio", "info");
-  $("#mode").innerHTML = `<span class="live" aria-hidden="true"></span>${esc(state.info.mode)}`;
-  $("#mode").title = state.info.target;
   $("#title").dataset.ws = state.info.workspace.slug;
-  $("#mode").className = "pill";
   const kicker = document.querySelector(".sel-card .sel-kicker");
   if (kicker) kicker.textContent = state.info.workspace.name;
   // short form of "local database /very/long/path/.keyring" (full path on hover)
   const path = state.info.target.replace(/^[a-z ]+?(?=\/|[a-z]+:\/\/)/i, "").trim();
   let short = path.length > 26 ? `…/${path.split("/").filter(Boolean).slice(-2).join("/")}` : path;
   try { if (/^[a-z]+:\/\//i.test(path)) { const u = new URL(path); short = `${u.host}${u.pathname}`; } } catch {}
-  $("#foot").innerHTML = `<div class="foot-row" title="${esc(state.info.target)}"><span>db</span>${esc(short)}</div>
+  $("#foot").innerHTML = `<div class="foot-row" title="${esc(state.info.target)}"><span><i class="live" aria-hidden="true"></i></span><b>${esc(state.info.mode)}</b>&nbsp;${esc(short)}</div>
     <div class="foot-row"><span>api</span><a href="/llms.txt">llms.txt</a>&nbsp;·&nbsp;/api/v1</div>`;
   await loadSpaces();
   $("#space").onchange = (e) => { state.space = e.target.value; render(); };
@@ -434,7 +465,8 @@ async function Actions(el) {
   $("#mk").onclick = () => guard(async () => { await K("createPermission", { slug: $("#as").value.trim(), name: $("#an").value.trim() || $("#as").value.trim(), category: $("#ac").value.trim() || undefined, space: sp() }); toast("Action saved"); render(); });
 }
 
-async function Subjects(el, selected) {
+async function Subjects(el, selected = state.openSubject) {
+  state.openSubject = null;
   el.innerHTML = `<div class="split"><div><div class="row" style="margin-bottom:12px"><input id="q" placeholder="Search subjects…"><button class="btn ghost" id="add">+ Grant to new subject</button></div><div id="list"></div></div><div id="detail"><div class="empty">Select a subject.</div></div></div>`;
   const load = async () => {
     const rows = await A("listSubjects", { q: $("#q").value.trim() || undefined, limit: 200 });
@@ -690,6 +722,94 @@ async function Keys(el) {
     $("#newKey").innerHTML = `<div class="muted" style="margin-bottom:4px">Shown once — copy it now.</div><div class="secret">${esc(r.key)}</div>`;
   });
 }
+
+
+// ── command palette (⌘K / Ctrl+K / "/") ─────────────────────────────────
+const IS_MAC = /Mac|iP(hone|ad)/.test(navigator.platform);
+document.getElementById("cmdk-kbd").textContent = IS_MAC ? "⌘K" : "Ctrl K";
+const ICO = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const CMD_ICON = {
+  scope: '<path d="M12 3.5 3.5 8 12 12.5 20.5 8z"/><path d="m3.5 12 8.5 4.5 8.5-4.5M3.5 16l8.5 4.5 8.5-4.5"/>',
+  subject: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c.8-3.6 3.8-5.6 7.5-5.6s6.7 2 7.5 5.6"/>',
+  theme: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  link: '<path d="M14 4.5h5.5V10M19.5 4.5 11 13M18 14v4.5a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1H10"/>',
+  key: ICON.Keys, check: ICON.Playground, policy: ICON.Policy,
+};
+async function openPalette() {
+  if (document.querySelector(".cmdk-back")) return;
+  ui.close();
+  const prevFocus = document.activeElement;
+  const back = document.createElement("div");
+  back.className = "modal-back cmdk-back";
+  back.innerHTML = `<div class="cmdk" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="cmdk-in">${ICO('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>')}<input id="cmdk-q" placeholder="Search pages, scopes, subjects, commands…" autocomplete="off" spellcheck="false" role="combobox" aria-controls="cmdk-list" aria-expanded="true"><kbd>esc</kbd></div>
+    <div class="cmdk-list" id="cmdk-list" role="listbox"></div>
+    <div class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd>move</span><span><kbd>↵</kbd>open</span><span><kbd>esc</kbd>close</span></div>
+  </div>`;
+  document.body.appendChild(back);
+  const input = back.querySelector("#cmdk-q"), list = back.querySelector("#cmdk-list");
+  input.focus(); // focus first: keystrokes typed right after ⌘K must land in the box
+  const scopeOf = (spaces) => [{ slug: "", name: "Platform scope" }, ...spaces].map((x) => ({
+    group: "Scopes", label: x.name, hint: x.slug || "platform", icon: CMD_ICON.scope,
+    run: () => { const sel = $("#space"); sel.value = x.slug; sel.dispatchEvent(new Event("change", { bubbles: true })); },
+  }));
+  let scopeItems = scopeOf([]);
+  const pageItems = VIEWS.map((v) => ({ group: "Pages", label: v, hint: v === state.view ? "current" : "", icon: ICON[v], run: () => go(v) }));
+  const cmdItems = [
+    { group: "Commands", label: "Check access…", hint: "playground", icon: CMD_ICON.check, run: () => go("Playground") },
+    { group: "Commands", label: "Edit policy file", hint: "keyring.policy.json", icon: CMD_ICON.policy, run: () => go("Policy") },
+    { group: "Commands", label: "Create API key", hint: "keys", icon: CMD_ICON.key, run: () => { go("Keys"); setTimeout(() => $("#kn")?.focus(), 300); } },
+    { group: "Commands", label: theme === "dark" ? "Switch to light theme" : "Switch to dark theme", icon: CMD_ICON.theme, run: () => $("#theme").click() },
+    { group: "Commands", label: "Open llms.txt", hint: "agent guide", icon: CMD_ICON.link, run: () => window.open("/llms.txt", "_blank") },
+  ];
+  let subjectItems = [], active = 0, shown = [], seq = 0;
+  const hl = (t, q) => { if (!q) return esc(t); const i = t.toLowerCase().indexOf(q); return i < 0 ? esc(t) : `${esc(t.slice(0, i))}<mark>${esc(t.slice(i, i + q.length))}</mark>${esc(t.slice(i + q.length))}`; };
+  const paint = () => {
+    const q = input.value.trim().toLowerCase();
+    const match = (it) => !q || `${it.label} ${it.hint || ""}`.toLowerCase().includes(q);
+    shown = [...pageItems, ...scopeItems, ...subjectItems, ...cmdItems].filter(match);
+    active = Math.min(active, Math.max(0, shown.length - 1));
+    let last = "", i = 0;
+    list.innerHTML = shown.length ? shown.map((it) => {
+      const head = it.group !== last ? `<div class="cmdk-group">${esc((last = it.group))}</div>` : "";
+      const idx = i++;
+      return `${head}<div class="cmdk-item${idx === active ? " active" : ""}" role="option" aria-selected="${idx === active}" data-i="${idx}">${ICO(it.icon)}<span>${hl(it.label, q)}</span>${it.hint ? `<span class="hint">${esc(it.hint)}</span>` : ""}</div>`;
+    }).join("") : `<div class="cmdk-empty">No results for “${esc(input.value.trim())}”</div>`;
+    list.querySelector(".cmdk-item.active")?.scrollIntoView({ block: "nearest" });
+  };
+  const done = () => { document.removeEventListener("keydown", onKey, true); back.remove(); prevFocus?.focus?.(); };
+  const runAt = (i) => { const it = shown[i]; if (!it) return; done(); it.run(); };
+  const onKey = (e) => {
+    const stop = () => { e.preventDefault(); e.stopPropagation(); };
+    if (e.key === "Escape") { stop(); done(); }
+    else if (e.key === "ArrowDown") { stop(); active = (active + 1) % Math.max(1, shown.length); paint(); }
+    else if (e.key === "ArrowUp") { stop(); active = (active - 1 + shown.length) % Math.max(1, shown.length); paint(); }
+    else if (e.key === "Enter") { stop(); runAt(active); }
+    else if (e.key === "Tab") { stop(); input.focus(); }
+    else if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { stop(); done(); } // ⌘K again toggles closed
+  };
+  document.addEventListener("keydown", onKey, true);
+  back.addEventListener("mousedown", (e) => { if (e.target === back) done(); });
+  list.addEventListener("mousemove", (e) => { const el = e.target.closest(".cmdk-item"); if (el && Number(el.dataset.i) !== active) { active = Number(el.dataset.i); paint(); } });
+  list.addEventListener("click", (e) => { const el = e.target.closest(".cmdk-item"); if (el) runAt(Number(el.dataset.i)); });
+  input.addEventListener("input", async () => {
+    active = 0; paint();
+    const q = input.value.trim(), my = ++seq;
+    if (!q) { subjectItems = []; return; }
+    const rows = await A("listSubjects", { q, limit: 6 }).catch(() => []);
+    if (my !== seq) return; // a newer keystroke won
+    subjectItems = rows.map((r) => ({ group: "Subjects", label: r.subject, hint: (r.roles || []).join(", ") || r.display_name || "", icon: CMD_ICON.subject, run: () => { state.openSubject = r.subject; go("Subjects"); } }));
+    paint();
+  });
+  paint();
+  K("listSpaces").then((spaces) => { if (back.isConnected) { scopeItems = scopeOf(spaces); paint(); } }).catch(() => {});
+}
+document.getElementById("cmdk-open").onclick = openPalette;
+document.addEventListener("keydown", (e) => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "") || document.activeElement?.isContentEditable;
+  if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) { e.preventDefault(); openPalette(); }
+  else if (e.key === "/" && !typing && !document.querySelector(".modal-back")) { e.preventDefault(); openPalette(); }
+});
 
 $("#theme").onclick = () => {
   theme = theme === "dark" ? "light" : "dark";
