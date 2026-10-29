@@ -125,7 +125,7 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 
 /* ── dialog ── */
 .modal-back { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--a-bg) 72%, transparent); backdrop-filter: blur(2px); animation: kr-fade .12s ease-out; }
-.modal { width: min(440px, 100%); border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-bg); background-image: var(--a-noise); background-size: 180px; box-shadow: 8px 8px 0 color-mix(in srgb, var(--a-fg) 8%, transparent); animation: kr-rise .14s ease-out; }
+.modal { width: min(440px, 100%); border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-bg); background-image: var(--a-noise); background-size: 180px; animation: kr-rise .14s ease-out; }
 .modal > h2 { margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--a-line); font: 400 12px var(--a-font-mono); color: var(--a-muted); background-color: var(--a-panel); background-image: repeating-linear-gradient(-45deg, var(--a-line) 0 1px, transparent 1px 7px); }
 .modal > h2::before { content: "── "; color: var(--a-dim); }
 .modal.danger > h2::before { content: "!! "; color: var(--a-bad); }
