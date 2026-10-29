@@ -1,16 +1,40 @@
 import { source } from "@/lib/source";
 import {
   PageArticle,
-  PageBreadcrumb,
   PageFooter,
   PageRoot,
   PageTOC,
+  PageTOCItems,
+  PageTOCPopover,
+  PageTOCPopoverContent,
+  PageTOCPopoverItems,
+  PageTOCPopoverTrigger,
+  PageTOCTitle,
 } from "fumadocs-ui/layouts/docs/page";
 import { DocsBody, DocsDescription, DocsTitle } from "fumadocs-ui/page";
 import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/components/mdx";
 import type { Metadata } from "next";
 import { createRelativeLink } from "fumadocs-ui/mdx";
+import Link from "next/link";
+import { GITHUB_URL } from "@/lib/site";
+
+/* `[03]` — the page's position in the sidebar, like the landing's section labels. */
+function pageNumber(url: string) {
+  const pages: { url: string }[] = [];
+  const walk = (nodes: typeof source.pageTree.children) => {
+    for (const node of nodes) {
+      if (node.type === "page") pages.push(node);
+      else if (node.type === "folder") {
+        if (node.index) pages.push(node.index);
+        walk(node.children);
+      }
+    }
+  };
+  walk(source.pageTree.children);
+  const i = pages.findIndex((p) => p.url === url);
+  return String(i === -1 ? 0 : i).padStart(2, "0");
+}
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -32,10 +56,22 @@ export default async function Page(props: {
 
   return (
     <PageRoot toc={{ toc: data.toc }}>
+      <PageTOCPopover>
+        <PageTOCPopoverTrigger />
+        <PageTOCPopoverContent>
+          <PageTOCPopoverItems />
+        </PageTOCPopoverContent>
+      </PageTOCPopover>
       <PageArticle>
-        <PageBreadcrumb />
-        <DocsTitle>{data.title}</DocsTitle>
-        <DocsDescription>{data.description}</DocsDescription>
+        <div className="label rule kr-docs-crumb">
+          <span className="accent">[{pageNumber(page.url)}]</span>
+          <span>
+            <Link href="/docs">docs</Link>
+            {params.slug?.map((part) => ` / ${part}`)}
+          </span>
+        </div>
+        <DocsTitle className="kr-docs-h1">{data.title}</DocsTitle>
+        <DocsDescription className="kr-docs-lede">{data.description}</DocsDescription>
         <DocsBody>
           <MDX
             components={getMDXComponents({
@@ -43,9 +79,18 @@ export default async function Page(props: {
             })}
           />
         </DocsBody>
-        <PageFooter />
+        <PageFooter className="kr-docs-footer" />
+        <div className="kr-docs-colophon">
+          <span>© {new Date().getFullYear()} keyring · mit licensed</span>
+          <a href={`${GITHUB_URL}/tree/main/apps/web/content/docs/${page.path}`} target="_blank" rel="noreferrer">
+            edit this page ↗
+          </a>
+        </div>
       </PageArticle>
-      <PageTOC />
+      <PageTOC>
+        <PageTOCTitle />
+        <PageTOCItems />
+      </PageTOC>
     </PageRoot>
   );
 }

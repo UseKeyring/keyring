@@ -1,17 +1,21 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-import { KeyringMark } from "@keyring/ui/components/keyring-logo";
 
+/*
+ * The landing Nav (logo, links, theme toggle, CTA) renders above the docs
+ * layout, so the sidebar/mobile title is a terse mono crumb rather than a
+ * second logo, and fumadocs' own theme switch is off (the Nav owns it).
+ */
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
+      url: "/docs",
       title: (
-        <span className="flex items-center gap-2">
-          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-ink text-canvas">
-            <KeyringMark className="h-3 w-3" />
-          </span>
-          Keyring Docs
+        <span className="kr-docs-title">
+          <span className="kr-docs-title-mark">[~]</span>
+          <span>docs</span>
         </span>
       ),
     },
+    themeSwitch: { enabled: false },
   };
 }
