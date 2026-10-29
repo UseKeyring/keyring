@@ -119,8 +119,18 @@ export type PurgeResult = { purged: number };
 // ── Internals ──────────────────────────────────────────────────────────
 
 type CSpace = { id: string; slug: string; name: string; description: string | null; created_at: string; inPolicy: boolean };
-type CRole = { slug: string; name: string; description: string | null; created_at: string; actions: Set<string> };
+type CRole = { slug: string; name: string; description: string | null; created_at: string; actions: Set<string>; fromPolicy: boolean };
 type CAction = { slug: string; name: string; category: string; description: string | null; created_at: string };
+
+/* Stable list order across restarts: policy-declared items first (in
+   declaration order — their created_at is this process's boot time, so it
+   can't be compared with persisted runtime timestamps), then runtime items by
+   creation time. */
+function byOrigin(aPolicy: boolean, aAt: string, ai: number, bPolicy: boolean, bAt: string, bi: number): number {
+  if (aPolicy !== bPolicy) return aPolicy ? -1 : 1;
+  if (aPolicy) return ai - bi;
+  return cmpC(aAt, bAt) || ai - bi;
+}
 type CScope = {
   key: string | null; // space id, null = platform
   space: CSpace | null;
@@ -255,14 +265,14 @@ export class LocalKeyring<P extends KeyringPolicy = KeyringPolicy> {
       }
       const roles = new Map<string, CRole>();
       for (const r of norm?.roles ?? []) {
-        roles.set(r.slug, { slug: r.slug, name: r.name, description: r.description, created_at: this.bootAt, actions: new Set(r.actions) });
+        roles.set(r.slug, { slug: r.slug, name: r.name, description: r.description, created_at: this.bootAt, actions: new Set(r.actions), fromPolicy: true });
       }
       for (const r of o.roles) {
         if (r.space !== slug) continue;
         const prev = roles.get(r.slug);
         const acts = new Set(prev?.actions ?? []);
         for (const a of r.actions) if (actions.has(a)) acts.add(a);
-        roles.set(r.slug, { slug: r.slug, name: r.name, description: r.description, created_at: prev?.created_at ?? r.created_at, actions: acts });
+        roles.set(r.slug, { slug: r.slug, name: r.name, description: r.description, created_at: prev?.created_at ?? r.created_at, actions: acts, fromPolicy: prev?.fromPolicy ?? false });
       }
       let defaultRole = norm?.defaultRole ?? null;
       const d = o.defaults.find((x) => x.space === slug);
@@ -654,7 +664,7 @@ export class LocalKeyring<P extends KeyringPolicy = KeyringPolicy> {
     const scope = this.scope(space);
     return [...scope.roles.values()]
       .map((r, i) => ({ r, i }))
-      .sort((a, b) => cmpC(a.r.created_at, b.r.created_at) || a.i - b.i)
+      .sort((a, b) => byOrigin(a.r.fromPolicy, a.r.created_at, a.i, b.r.fromPolicy, b.r.created_at, b.i))
       .map(({ r }) => ({ slug: r.slug, name: r.name, description: r.description, space: scope.space?.slug ?? null, created_at: r.created_at }));
   }
 
@@ -675,7 +685,7 @@ export class LocalKeyring<P extends KeyringPolicy = KeyringPolicy> {
     await this.ready();
     return [...this.model.spaces.values()]
       .map((s, i) => ({ s: s.space!, i }))
-      .sort((a, b) => cmpC(a.s.created_at, b.s.created_at) || a.i - b.i)
+      .sort((a, b) => byOrigin(a.s.inPolicy, a.s.created_at, a.i, b.s.inPolicy, b.s.created_at, b.i))
       .map(({ s }) => ({ id: s.id, slug: s.slug, name: s.name, description: s.description, created_at: s.created_at }));
   }
 
