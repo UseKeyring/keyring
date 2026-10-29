@@ -347,7 +347,7 @@ async function Overview(el) {
   const c = o.counts;
   const stat = (n, l) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;
   el.innerHTML = `
-    <div class="cards">${stat(c.roles, "Roles")}${stat(c.actions, "Actions")}${stat(c.subjects, "Subjects")}${stat(c.grants, "Active grants")}${stat(c.spaces, "Spaces")}${stat(c.checks_24h, "Checks 24h")}${stat(c.denied_24h, "Denied 24h")}</div>
+    <div class="cards c4">${stat(fmtN(c.checks_24h), "Checks · 24h")}${stat(c.checks_24h ? `${Math.round(((c.checks_24h - c.denied_24h) / c.checks_24h) * 100)}%` : "—", "Allow rate · 24h")}${stat(fmtN(c.subjects), "Subjects")}${stat(fmtN(c.grants), "Active grants")}</div>
     <div class="panel"><h2 class="with-legend" id="ov-h">Checks · last 30 days</h2><div id="ov-chart"></div></div>
     <div class="split">
       <div class="panel"><h2>Use it from your app</h2>
