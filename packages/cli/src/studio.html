@@ -57,9 +57,11 @@ nav .item svg { width: 18px; height: 18px; flex: 0 0 auto; }
 nav .item:hover { color: var(--a-fg); background: var(--a-panel); }
 nav .item.on { color: var(--a-accent); background: var(--a-raised); }
 nav .item:focus-visible { outline: 1px solid var(--a-accent); outline-offset: 1px; }
-nav .foot { margin: auto -12px 0; padding: 12px 20px 14px; font-size: 11.5px; color: var(--a-muted); border-top: 1px solid var(--a-line); display: flex; flex-direction: column; gap: 4px; }
-.foot-row { display: flex; gap: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.foot-row > span { width: 26px; flex: 0 0 auto; color: var(--a-dim); text-transform: uppercase; font-size: 10.5px; letter-spacing: .06em; line-height: 1.9; }
+nav .foot { margin: auto -12px 0; padding: 10px 12px 12px 20px; border-top: 1px solid var(--a-line); }
+.foot-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#foot-mode { display: inline-flex; align-items: center; gap: 9px; font: 13px var(--a-font-display); color: var(--a-fg); white-space: nowrap; }
+.foot-path { margin-top: 2px; padding-left: 15px; font-size: 11px; color: var(--a-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+nav #theme { width: 28px; height: 28px; flex: 0 0 auto; }
 
 /* ── main ── */
 main { padding: 0 0 64px; min-width: 0; }
@@ -248,11 +250,7 @@ kbd { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; b
 .cmdk-foot { display: flex; gap: 16px; padding: 9px 12px; border-top: 1px solid var(--a-line); font-size: 11px; color: var(--a-dim); }
 .cmdk-foot kbd { height: 18px; margin-right: 5px; }
 /* footer status + theme */
-nav .foot { flex-direction: row !important; align-items: flex-end; justify-content: space-between; gap: 10px; }
-#foot { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.foot-row b { font-weight: 400; color: var(--a-fg); }
 .foot-row .live, .live { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--a-ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-ok) 18%, transparent); vertical-align: middle; }
-nav #theme { width: 28px; height: 28px; flex: 0 0 auto; }
 @media (max-width: 760px) { .search-btn { min-width: 0; } .search-btn span, .search-btn kbd { display: none; } }
 </style>
 </head>
@@ -263,7 +261,10 @@ nav #theme { width: 28px; height: 28px; flex: 0 0 auto; }
       <select id="space" title="Switch scope" data-variant="card" data-kicker="Keyring studio"><option value="">Platform scope</option></select>
     </div>
     <div id="navlist"></div>
-    <div class="foot"><div id="foot"></div><button id="theme" type="button" aria-label="Toggle theme" title="Toggle theme"></button></div>
+    <div class="foot">
+      <div class="foot-top"><span id="foot-mode"></span><button id="theme" type="button" aria-label="Toggle theme" title="Toggle theme"></button></div>
+      <div class="foot-path" id="foot-path"></div>
+    </div>
   </nav>
   <main>
     <header class="top">
@@ -352,8 +353,9 @@ async function boot() {
   const path = state.info.target.replace(/^[a-z ]+?(?=\/|[a-z]+:\/\/)/i, "").trim();
   let short = path.length > 26 ? `…/${path.split("/").filter(Boolean).slice(-2).join("/")}` : path;
   try { if (/^[a-z]+:\/\//i.test(path)) { const u = new URL(path); short = `${u.host}${u.pathname}`; } } catch {}
-  $("#foot").innerHTML = `<div class="foot-row" title="${esc(state.info.target)}"><span><i class="live" aria-hidden="true"></i></span><b>${esc(state.info.mode)}</b>&nbsp;${esc(short)}</div>
-    <div class="foot-row"><span>api</span><a href="/llms.txt">llms.txt</a>&nbsp;·&nbsp;/api/v1</div>`;
+  $("#foot-mode").innerHTML = `<i class="live" aria-hidden="true"></i>${state.info.mode === "local" ? "Local · embedded" : esc(state.info.mode[0].toUpperCase() + state.info.mode.slice(1))}`;
+  $("#foot-path").textContent = short;
+  $("#foot-path").title = state.info.target;
   await loadSpaces();
   $("#space").onchange = (e) => { state.space = e.target.value; render(); };
   nav(); render();
