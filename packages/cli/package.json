@@ -1,6 +1,6 @@
 {
   "name": "@usekeyring/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Keyring CLI \u2014 migrate, bootstrap, policy-as-code, local console (studio) and MCP for agents",
   "type": "module",
   "license": "MIT",

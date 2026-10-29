@@ -12,7 +12,7 @@ import { applyPlan, generateTypes, normalizePolicy, planPolicy, POLICY_FILE, POL
 import { openBrowser, startServer } from "./server.js";
 import { connect, describeTarget, resolveTarget, type Conn, type TargetFlags } from "./target.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 type Opts = Record<string, string | boolean>;
 type Ctx = { cwd: string; opts: Opts; args: string[]; flags: TargetFlags; cmd: CommandSpec };
