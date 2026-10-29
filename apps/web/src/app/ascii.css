@@ -1,28 +1,13 @@
+@import "./ascii-tokens.css";
+
 /*
- * ASCII design system — landing only, scoped under `.ascii`.
+ * ASCII design system — public site, scoped under `.ascii` (tokens: ascii-tokens.css).
  * Charcoal canvas, hairline rails, blocky cells that share borders,
  * square-cornered controls, mono for everything except display type.
  * Light ("paper") and dark ("charcoal") follow next-themes' `.dark`.
  */
 
 .ascii {
-  --a-bg: #f2f0eb;
-  --a-panel: #ebe8e1;
-  --a-raised: #e4e0d7;
-  --a-line: #d9d4c9;
-  --a-line-strong: #bdb6a8;
-  --a-fg: #1a1917;
-  --a-muted: #6b675f;
-  --a-dim: #a19b8f;
-  --a-accent: #b4500a;
-  --a-accent-hover: #9a4408;
-  --a-accent-fg: #fff8f2;
-  --a-ok: #3f7d2c;
-  --a-bad: #b23b25;
-  --a-grid: rgba(26, 25, 23, 0.05);
-  --a-noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .085 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  --a-noise-page: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .045 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-
   background-color: var(--a-bg);
   background-image: var(--a-noise-page);
   background-size: 180px 180px;
@@ -31,26 +16,6 @@
   font-size: 13px;
   line-height: 1.6;
   min-height: 100vh;
-}
-
-.dark .ascii,
-.ascii:where(.dark *) {
-  --a-bg: #141414;
-  --a-panel: #191919;
-  --a-raised: #1f1f1f;
-  --a-line: #2a2a2a;
-  --a-line-strong: #3d3d3d;
-  --a-fg: #e8e6e1;
-  --a-muted: #8f8b84;
-  --a-dim: #5a5752;
-  --a-accent: #c25a0e;
-  --a-accent-hover: #d96a17;
-  --a-accent-fg: #fff8f2;
-  --a-ok: #86c26f;
-  --a-bad: #e0735c;
-  --a-grid: rgba(232, 230, 225, 0.045);
-  --a-noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  --a-noise-page: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 .ascii ::selection {

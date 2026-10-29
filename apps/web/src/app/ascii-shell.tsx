@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { KeyringMark } from "@keyring/ui/components/keyring-logo";
 import { GITHUB_URL } from "@/lib/site";
+import { asciiFontVars } from "./ascii-fonts";
 import { AsciiField } from "./ascii-field";
 import { CopyCommand } from "./copy-command";
 import { ThemeToggle } from "./theme-toggle";
@@ -13,9 +13,7 @@ import "./ascii.css";
  * <AsciiPage> + <Row>; tokens and primitives live in ascii.css.
  */
 
-const display = Inter_Tight({ subsets: ["latin"], weight: ["300", "400"], variable: "--a-font-display" });
-const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--a-font-mono" });
-export const asciiFontVars = `${display.variable} ${mono.variable}`;
+export { asciiFontVars };
 
 /* A full-bleed row with a railed frame and `+` crosshairs on its bottom edge. */
 export function Row({ children, id, className = "" }: { children: React.ReactNode; id?: string; className?: string }) {

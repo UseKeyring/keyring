@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, type ReactNode } from "react";
-import { consoleFontVars } from "./console-fonts";
+import { asciiFontVars as consoleFontVars } from "../ascii-fonts";
 import "./console.css";
 
 /*

@@ -1,3 +1,4 @@
+import { rehypeCodeDefaultOptions } from "fumadocs-core/mdx-plugins";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 
 // Loose annotation: bun's isolated store (.bun/…) breaks portable type
@@ -8,4 +9,21 @@ export const docs: any = defineDocs({
   dir: "content/docs",
 });
 
-export default defineConfig();
+export default defineConfig({
+  mdxOptions: {
+    rehypeCodeOptions: {
+      ...rehypeCodeDefaultOptions,
+      transformers: [
+        ...(rehypeCodeDefaultOptions.transformers ?? []),
+        // Expose each fence's language on <pre> so the docs code window
+        // (src/components/mdx.tsx) can title itself "~/bash", "~/ts", ...
+        {
+          name: "keyring:data-language",
+          pre(node) {
+            node.properties["data-language"] = this.options.lang;
+          },
+        },
+      ],
+    },
+  },
+});
