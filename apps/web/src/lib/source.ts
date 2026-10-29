@@ -1,21 +1,15 @@
-import { docs } from "../../.source";
+import { docs } from "../../.source/server";
 import { loader } from "fumadocs-core/source";
 
-// Bridge: fumadocs-mdx 11.10's toFumadocsSource() returns a lazy
-// `{ files: () => [...] }`, but fumadocs-core 15.8's loader expects
-// `{ files: [...] }` (it calls files.map eagerly). Resolve once here —
-type MdxFile = {
-  type: "page" | "meta";
-  path: string;
-  absolutePath?: string;
-  data: unknown;
-};
-const mdxSource = docs.toFumadocsSource() as unknown as { files: () => MdxFile[] };
+// fumadocs-mdx 15 generates .source/server.ts, and toFumadocsSource() now
+// returns the eager { files } shape fumadocs-core 16's loader expects (the
+// old lazy-files bridge is gone). `docs` is typed loosely on purpose —
+// source.config.ts annotates it `any` because bun's isolated store breaks
+// portable inference (TS2742) — so it arrives as `never` here.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fumadocsSource = (docs as any).toFumadocsSource();
 
 export const source = loader({
   baseUrl: "/docs",
-  // Codegen file shapes are version-fluid across fumadocs-mdx/core; the
-  // runtime contract ({ type, path, data }) is stable, so stay loose here.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  source: { files: mdxSource.files() } as any,
+  source: fumadocsSource,
 });

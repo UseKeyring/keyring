@@ -1,17 +1,5 @@
 import { source } from "@/lib/source";
-import {
-  PageArticle,
-  PageFooter,
-  PageRoot,
-  PageTOC,
-  PageTOCItems,
-  PageTOCPopover,
-  PageTOCPopoverContent,
-  PageTOCPopoverItems,
-  PageTOCPopoverTrigger,
-  PageTOCTitle,
-} from "fumadocs-ui/layouts/docs/page";
-import { DocsBody, DocsDescription, DocsTitle } from "fumadocs-ui/page";
+import { DocsBody, DocsDescription, DocsPage, DocsTitle, PageFooter } from "fumadocs-ui/layouts/docs/page";
 import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/components/mdx";
 import type { Metadata } from "next";
@@ -55,43 +43,33 @@ export default async function Page(props: {
   const MDX = data.body;
 
   return (
-    <PageRoot toc={{ toc: data.toc }}>
-      <PageTOCPopover>
-        <PageTOCPopoverTrigger />
-        <PageTOCPopoverContent>
-          <PageTOCPopoverItems />
-        </PageTOCPopoverContent>
-      </PageTOCPopover>
-      <PageArticle>
-        <div className="label rule kr-docs-crumb">
-          <span className="accent">[{pageNumber(page.url)}]</span>
-          <span>
-            <Link href="/docs">docs</Link>
-            {params.slug?.map((part) => ` / ${part}`)}
-          </span>
-        </div>
-        <DocsTitle className="kr-docs-h1">{data.title}</DocsTitle>
-        <DocsDescription className="kr-docs-lede">{data.description}</DocsDescription>
-        <DocsBody>
-          <MDX
-            components={getMDXComponents({
-              a: createRelativeLink(source, page),
-            })}
-          />
-        </DocsBody>
-        <PageFooter className="kr-docs-footer" />
-        <div className="kr-docs-colophon">
-          <span>© {new Date().getFullYear()} keyring · mit licensed</span>
-          <a href={`${GITHUB_URL}/tree/main/apps/web/content/docs/${page.path}`} target="_blank" rel="noreferrer">
-            edit this page ↗
-          </a>
-        </div>
-      </PageArticle>
-      <PageTOC>
-        <PageTOCTitle />
-        <PageTOCItems />
-      </PageTOC>
-    </PageRoot>
+    // fumadocs-ui 16: one DocsPage with slots. Its own breadcrumb/footer are
+    // off — the [NN] crumb, footer and colophon below are ours (docs.css).
+    <DocsPage toc={data.toc} breadcrumb={{ enabled: false }} footer={{ enabled: false }}>
+      <div className="label rule kr-docs-crumb">
+        <span className="accent">[{pageNumber(page.url)}]</span>
+        <span>
+          <Link href="/docs">docs</Link>
+          {params.slug?.map((part) => ` / ${part}`)}
+        </span>
+      </div>
+      <DocsTitle className="kr-docs-h1">{data.title}</DocsTitle>
+      <DocsDescription className="kr-docs-lede">{data.description}</DocsDescription>
+      <DocsBody>
+        <MDX
+          components={getMDXComponents({
+            a: createRelativeLink(source, page),
+          })}
+        />
+      </DocsBody>
+      <PageFooter className="kr-docs-footer" />
+      <div className="kr-docs-colophon">
+        <span>© {new Date().getFullYear()} keyring · mit licensed</span>
+        <a href={`${GITHUB_URL}/tree/main/apps/web/content/docs/${page.path}`} target="_blank" rel="noreferrer">
+          edit this page ↗
+        </a>
+      </div>
+    </DocsPage>
   );
 }
 
