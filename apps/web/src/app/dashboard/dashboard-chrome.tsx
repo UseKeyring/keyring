@@ -31,13 +31,12 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarProvider,
-  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from "@keyring/ui/components/sidebar";
 import { cn } from "@keyring/ui/lib/utils";
 import { SolarIcon } from "@keyring/ui/components/solar-icon";
-import { Spotlight, SpotlightButton } from "./spotlight";
+import { Spotlight, SpotlightButton, openSpotlight } from "./spotlight";
 import {
   ConsoleNavLink,
   ConsoleUserRow,
@@ -120,9 +119,10 @@ function NavItem({ item }: { item: NavEntry }) {
         />
       </SidebarMenuButton>
       {subs.length > 0 && active && (
-        <SidebarMenuSub className="my-2 gap-y-2">
-          {subs.map((sub) => {
+        <SidebarMenuSub className="mx-0 my-1 translate-x-0 gap-y-0 border-l-0 px-0 py-0">
+          {subs.map((sub, i) => {
             const subActive = isLinkActive(pathname, sub.to, sub.exact);
+            const last = i === subs.length - 1;
             return (
               <SidebarMenuSubItem key={sub.to}>
                 <Link
@@ -133,11 +133,15 @@ function NavItem({ item }: { item: NavEntry }) {
                     if (isMobile) setOpenMobile(false);
                   }}
                   className={cn(
-                    "ml-4 inline-flex flex-row items-center gap-x-2 text-sm font-medium transition-colors hover:text-ink",
+                    "flex h-7 flex-row items-center gap-x-2 pl-[15px] text-[12.5px] transition-colors hover:text-ink",
                     subActive ? "text-ink" : "text-ink-muted",
                   )}
                 >
+                  <span aria-hidden className="k-tree text-ink-subtle">
+                    {last ? "└─" : "├─"}
+                  </span>
                   <span className="relative">{sub.label}</span>
+                  {subActive && <span aria-hidden className="k-accent ml-auto pr-3">●</span>}
                 </Link>
               </SidebarMenuSubItem>
             );
@@ -171,17 +175,17 @@ function WorkspaceSwitcher() {
         <button
           type="button"
           aria-label="Switch workspace"
-          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-pillar"
+          className="flex h-9 w-full items-center gap-2.5 border border-hairline bg-canvas px-2 text-left transition-colors hover:border-surface-2 hover:bg-pillar data-[state=open]:border-surface-2"
         >
           <Avatar
             name={active?.organizations?.name ?? "?"}
             avatar_url={active?.organizations?.avatar_url ?? null}
-            className="h-6 w-6"
+            className="h-5 w-5 border border-hairline"
           />
-          <span className="type-label min-w-0 flex-1 truncate text-[15px] text-ink">
+          <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
             {active?.organizations?.name ?? "Workspaces"}
           </span>
-          <SolarIcon name="chevronDown" className="h-4 w-4 shrink-0 text-ink-muted" />
+          <SolarIcon name="chevronDown" className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -190,7 +194,7 @@ function WorkspaceSwitcher() {
         className="w-(--radix-popper-anchor-width) min-w-[220px]"
       >
         <DropdownMenuLabel>
-          <span className="type-mono block text-ink-muted">Workspaces</span>
+          <span className="k-label block">Workspaces</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {(workspaces.data ?? []).map((w) => {
@@ -249,21 +253,19 @@ function ConsoleSidebar() {
           );
 
   return (
-    <Sidebar variant="inset" collapsible="icon">
-      <SidebarHeader className="flex flex-row items-center justify-between gap-2 md:pt-3.5 group-data-[collapsible=icon]:justify-center">
+    <Sidebar variant="sidebar" collapsible="icon" className="k-grain">
+      <SidebarHeader className="flex h-12 shrink-0 flex-row items-center gap-1.5 border-b border-hairline px-2 py-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-0">
         <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
           <WorkspaceSwitcher />
         </div>
-        <div className="flex shrink-0 flex-row items-center gap-1 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:justify-center">
-          <SidebarTrigger />
-          <div className="group-data-[collapsible=icon]:hidden">
-            <SpotlightButton />
-          </div>
-        </div>
+        <SidebarTrigger className="h-8 w-8 shrink-0 text-ink-muted hover:text-ink" />
       </SidebarHeader>
 
-      <SidebarContent className="gap-4 px-0 py-2">
-        <SidebarGroup>
+      <SidebarContent className="gap-1 px-0 pt-3 pb-3">
+        <div className="px-2 pb-1 group-data-[collapsible=icon]:hidden">
+          <SpotlightButton variant="bar" />
+        </div>
+        <SidebarGroup className="py-1">
           <SidebarGroupContent>
             <SidebarMenu>
               <NavItem item={overview} />
@@ -271,12 +273,15 @@ function ConsoleSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {sections.map((section) => {
+        {sections.map((section, si) => {
           const items = visible(section.items);
           if (items.length === 0) return null;
           return (
-            <SidebarGroup key={section.label}>
-              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+            <SidebarGroup key={section.label} className="py-1">
+              <SidebarGroupLabel className="k-label k-rule h-8 gap-2 px-1.5 text-[10.5px] font-normal">
+                <span className="k-accent">[{String(si + 1).padStart(2, "0")}]</span>
+                <span>{section.label}</span>
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {items.map((item) => (
@@ -289,8 +294,7 @@ function ConsoleSidebar() {
         })}
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarSeparator />
+      <SidebarFooter className="border-t border-hairline p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -309,8 +313,8 @@ function ConsoleSidebar() {
                 className="w-(--radix-popper-anchor-width) min-w-[200px]"
               >
                 <DropdownMenuLabel>
-                  <span className="type-body-sm block truncate text-ink">{user?.email}</span>
-                  <span className="type-mono block text-ink-muted">{roleLabel}</span>
+                  <span className="block truncate text-[12.5px] font-normal text-ink">{user?.email}</span>
+                  <span className="k-label block font-normal">{roleLabel}</span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
@@ -373,32 +377,24 @@ export function DashboardChrome({ children }: { children: ReactNode }) {
   }, [loading, user, profile.isFetched, profile.data?.organization_id, router]);
 
   if (loading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas">
-        <div className="flex w-full max-w-3xl animate-pulse flex-col gap-4 px-4" aria-hidden>
-          <div className="h-7 w-48 rounded-sm bg-gray-100 dark:bg-polar-700" />
-          <div className="h-4 w-72 max-w-full rounded-sm bg-gray-100 dark:bg-polar-700" />
-          <div className="mt-2 h-40 w-full rounded-2xl bg-gray-100 dark:bg-polar-800" />
-        </div>
-      </div>
-    );
+    return <ConsoleLoading />;
   }
 
   return (
-    // The console follows the user's theme (next-themes) like the rest of
-    // the app — light canvas in light mode, Polar dark dashboard in dark.
-    <div className="min-h-screen bg-canvas text-ink-muted">
-      <SidebarProvider>
+    // Follows the user's theme (next-themes): paper in light, charcoal in
+    // dark — tokens come from the ASCII console scope (console.css).
+    <div className="min-h-screen text-ink-muted">
+      <SidebarProvider className="flex-col md:flex-row">
         {/* Mobile top bar — the sidebar itself becomes a drawer */}
-        <header className="sticky top-0 z-20 flex items-center justify-between bg-canvas px-4 py-2 md:hidden">
+        <header className="k-grain sticky top-0 z-20 flex h-12 items-center justify-between border-b border-hairline bg-canvas px-2 md:hidden">
           <Wordmark />
           <div className="flex items-center gap-1">
             <SpotlightButton />
-            <SidebarTrigger />
+            <SidebarTrigger className="h-8 w-8 text-ink-muted hover:text-ink" />
             <button
               type="button"
               onClick={() => signOut()}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-pillar hover:text-ink"
+              className="inline-flex h-8 w-8 items-center justify-center text-ink-muted hover:bg-pillar hover:text-ink"
               aria-label="Sign out"
             >
               <SolarIcon name="logout" className="h-4 w-4" />
@@ -406,20 +402,62 @@ export function DashboardChrome({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* On large devices the card scrolls here. On small devices the
-            document is the only element that should scroll. */}
-        <div className="relative flex min-h-svh w-full flex-col md:h-svh md:flex-row md:overflow-hidden md:p-2">
+        {/* On large devices the main column scrolls here. On small devices
+            the document is the only element that should scroll. */}
+        <div className="relative flex min-h-svh w-full flex-col md:h-svh md:flex-row md:overflow-hidden">
           <ConsoleSidebar />
 
-          {/* Main — inset rounded card */}
-          <main className="relative flex min-w-0 flex-1 flex-col rounded-2xl border border-hairline bg-white shadow-xs md:min-h-0 md:overflow-y-auto dark:border-polar-800 dark:bg-polar-900">
-            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pt-8 pb-8 md:px-8">
+          <main className="relative flex min-w-0 flex-1 flex-col md:min-h-0 md:overflow-y-auto">
+            <ConsoleTopbar />
+            <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pt-8 pb-16 md:px-10 md:pt-10">
               {children}
             </div>
           </main>
         </div>
         <Spotlight basePath={base} />
       </SidebarProvider>
+    </div>
+  );
+}
+
+/** Desktop path bar — `keyring / acme / settings / api-keys` — plus ⌘K. */
+function ConsoleTopbar() {
+  const pathname = usePathname();
+  const parts = pathname.replace(/^\/dashboard\/?/, "").split("/").filter(Boolean);
+  return (
+    <div className="k-grain sticky top-0 z-10 hidden h-12 shrink-0 items-center justify-between gap-4 border-b border-hairline bg-canvas px-10 md:flex">
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-[12px]">
+        <span className="k-dim">keyring</span>
+        {parts.map((p, i) => (
+          <span key={`${p}-${i}`} className="flex min-w-0 items-center gap-2">
+            <span className="k-dim">/</span>
+            <span className={cn("truncate", i === parts.length - 1 ? "text-ink" : "text-ink-muted")}>
+              {p}
+            </span>
+          </span>
+        ))}
+      </nav>
+      <button
+        type="button"
+        onClick={openSpotlight}
+        className="flex shrink-0 items-center gap-2 text-[12px] text-ink-muted transition-colors hover:text-ink"
+      >
+        <span>search</span>
+        <span className="k-kbd">⌘K</span>
+      </button>
+    </div>
+  );
+}
+
+/** Hatched placeholder while the session / workspace resolves. */
+export function ConsoleLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="flex w-full max-w-3xl animate-pulse flex-col gap-4 px-4" aria-hidden>
+        <div className="h-7 w-48 rounded-sm bg-gray-100 dark:bg-polar-700" />
+        <div className="h-4 w-72 max-w-full rounded-sm bg-gray-100 dark:bg-polar-700" />
+        <div className="mt-2 h-40 w-full rounded-2xl bg-gray-100 dark:bg-polar-800" />
+      </div>
     </div>
   );
 }

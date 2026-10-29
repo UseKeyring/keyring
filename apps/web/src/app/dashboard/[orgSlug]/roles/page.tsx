@@ -117,12 +117,12 @@ export default function RolesPage() {
       {loading ? (
         <CardsSkeleton />
       ) : (
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="k-cells lg:grid-cols-2">
         {scopeRoles.map((r) => {
           return (
             <div
               key={r.id}
-              className="rounded-2xl border border-hairline bg-pillar p-6 md:p-8 dark:border-transparent dark:bg-polar-800"
+              className="p-6 md:p-8"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -134,7 +134,7 @@ export default function RolesPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {r.is_system && (
-                    <span className="type-eyebrow rounded-full border border-hairline px-2.5 py-1 text-[10px] text-ink-muted">
+                    <span className="k-tag">
                       System
                     </span>
                   )}
@@ -169,9 +169,12 @@ export default function RolesPage() {
             </div>
           );
         })}
+        {scopeRoles.length % 2 === 1 && (
+          <div aria-hidden className="k-hatch hidden lg:block" />
+        )}
         {scopeRoles.length === 0 && (
-          <div className="type-body-sm rounded-2xl border border-hairline bg-pillar p-8 text-center text-ink-muted lg:col-span-2">
-            No roles in this scope yet.
+          <div className="type-body-sm p-8 text-center text-ink-muted lg:col-span-2">
+            &gt; No roles in this scope yet.
           </div>
         )}
       </div>

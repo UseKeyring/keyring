@@ -1,0 +1,577 @@
+/*
+ * Console — ASCII design system.
+ *
+ * Same tokens and idioms as the public site (../ascii.css): paper / charcoal
+ * canvases, hairline borders, blocky shared-border cells, ~2px corners, mono
+ * UI text, Inter Tight light titles, one burnt-orange accent, faint grain,
+ * no shadows.
+ *
+ * Scope: everything hangs off <html> while the console is mounted —
+ * `html.ascii-console` (toggled by <ConsoleScope>) or, before hydration,
+ * `html:has(.ascii-console-root)`. Scoping at the root (not a wrapper div)
+ * is what lets Radix portals and the Sonner toaster, which render directly
+ * under <body>, pick up the look.
+ *
+ * Strategy: remap the Polar tokens that packages/ui components read
+ * (--canvas, --ink*, --pillar, --hairline, --surface-*, --polar-*, the
+ * Tailwind palette vars and text sizes) onto ASCII values, then override the
+ * few things a token can't reach (baked radii, shadows, fonts, the primary
+ * fill) with unlayered rules — unlayered CSS beats Tailwind's layered
+ * utilities regardless of specificity, so no !important is needed.
+ */
+
+/* ── tokens: paper (light) ─────────────────────────────────────────────── */
+html.ascii-console,
+html:has(.ascii-console-root) {
+  --a-bg: #f2f0eb;
+  --a-panel: #ebe8e1;
+  --a-raised: #e4e0d7;
+  --a-line: #d9d4c9;
+  --a-line-strong: #bdb6a8;
+  --a-fg: #1a1917;
+  --a-muted: #6b675f;
+  --a-dim: #a19b8f;
+  --a-accent: #b4500a;
+  --a-accent-hover: #9a4408;
+  --a-accent-fg: #fff8f2;
+  --a-ok: #3f7d2c;
+  --a-bad: #b23b25;
+  --a-grid: rgba(26, 25, 23, 0.05);
+  --a-noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .085 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  --a-noise-page: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .045 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  --a-hatch: repeating-linear-gradient(-45deg, var(--a-line) 0 1px, transparent 1px 7px);
+
+  /* Polar semantic tokens → ASCII */
+  --canvas: var(--a-bg);
+  --ink: var(--a-fg);
+  --ink-navy: var(--a-fg);
+  --ink-muted: var(--a-muted);
+  --ink-subtle: var(--a-dim);
+  --pillar: var(--a-panel);
+  --surface-1: var(--a-line);
+  --surface-2: var(--a-line-strong);
+  --surface-3: var(--a-raised);
+  --hairline: var(--a-line);
+  --blue: var(--a-accent);
+  --purple: var(--a-accent);
+  --green: var(--a-ok);
+  --accent-teal: var(--a-ok);
+  --accent-orange: var(--a-bad);
+
+  /* Polar dark scale (only reached through dark: utilities) */
+  --polar-50: var(--a-fg);
+  --polar-100: var(--a-fg);
+  --polar-200: var(--a-fg);
+  --polar-300: var(--a-muted);
+  --polar-400: var(--a-muted);
+  --polar-500: var(--a-muted);
+  --polar-600: var(--a-line-strong);
+  --polar-700: var(--a-line);
+  --polar-800: var(--a-panel);
+  --polar-900: var(--a-bg);
+  --polar-950: var(--a-bg);
+
+  /* Tailwind palette used by hard-coded utilities in shared components */
+  --color-white: var(--a-bg);
+  --color-gray-50: var(--a-panel);
+  --color-gray-100: var(--a-raised);
+  --color-gray-200: var(--a-line);
+  --color-gray-300: var(--a-line-strong);
+  --color-gray-400: var(--a-dim);
+  --color-gray-500: var(--a-muted);
+  --color-gray-600: var(--a-muted);
+  --color-gray-700: var(--a-fg);
+  --color-gray-800: var(--a-fg);
+  --color-gray-900: var(--a-fg);
+  --color-gray-950: var(--a-fg);
+  --color-blue-300: var(--a-accent);
+  --color-blue-400: var(--a-accent);
+  --color-blue-500: var(--a-accent);
+  --color-blue-600: var(--a-accent);
+  --color-blue-700: var(--a-accent);
+  --color-red-400: var(--a-bad);
+  --color-red-500: var(--a-bad);
+  --color-red-600: var(--a-bad);
+  --color-red-700: var(--a-bad);
+  --color-emerald-100: var(--a-line);
+  --color-emerald-400: var(--a-ok);
+  --color-emerald-500: var(--a-ok);
+  --color-emerald-600: var(--a-ok);
+  --color-emerald-900: var(--a-line);
+  --color-green-100: color-mix(in srgb, var(--a-ok) 14%, transparent);
+  --color-green-500: var(--a-ok);
+  --color-green-800: var(--a-ok);
+  --color-amber-100: var(--a-line);
+  --color-amber-300: var(--a-accent);
+  --color-amber-500: var(--a-accent);
+  --color-amber-700: var(--a-accent);
+  --color-amber-900: var(--a-line);
+  --color-yellow-100: color-mix(in srgb, var(--a-accent) 14%, transparent);
+  --color-yellow-800: var(--a-accent);
+
+  /* Mono runs wide: step the type scale down a notch */
+  --text-xxs: 0.625rem;
+  --text-xs: 0.71875rem; /* 11.5px */
+  --text-xs--line-height: 1.55;
+  --text-sm: 0.8125rem; /* 13px */
+  --text-sm--line-height: 1.6;
+  --text-base: 0.84375rem; /* 13.5px */
+  --text-base--line-height: 1.6;
+  --text-lg: 0.96875rem; /* 15.5px */
+
+  background-color: var(--a-bg);
+  color-scheme: light;
+}
+
+/* ── tokens: charcoal (dark) ───────────────────────────────────────────── */
+html.dark.ascii-console,
+html.dark:has(.ascii-console-root) {
+  --a-bg: #141414;
+  --a-panel: #191919;
+  --a-raised: #1f1f1f;
+  --a-line: #2a2a2a;
+  --a-line-strong: #3d3d3d;
+  --a-fg: #e8e6e1;
+  --a-muted: #8f8b84;
+  --a-dim: #5a5752;
+  --a-accent: #c25a0e;
+  --a-accent-hover: #d96a17;
+  --a-accent-fg: #fff8f2;
+  --a-ok: #86c26f;
+  --a-bad: #e0735c;
+  --a-grid: rgba(232, 230, 225, 0.045);
+  --a-noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  --a-noise-page: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+
+  /* `dark:text-white` / `dark:bg-white` mean "max contrast" here */
+  --color-white: var(--a-fg);
+  color-scheme: dark;
+}
+
+/* ── base ──────────────────────────────────────────────────────────────── */
+:is(html.ascii-console, html:has(.ascii-console-root)) body {
+  background-color: var(--a-bg);
+  background-image: var(--a-noise-page);
+  background-size: 180px 180px;
+  color: var(--a-fg);
+  font-family: var(--a-font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Mono everywhere — utilities (font-sans/font-mono/type-*) included. */
+:is(html.ascii-console, html:has(.ascii-console-root)) body * {
+  font-family: inherit;
+}
+
+:is(html.ascii-console, html:has(.ascii-console-root)) ::selection {
+  background: var(--a-accent);
+  color: var(--a-accent-fg);
+}
+
+/* No (elevation) shadows. Rings live on their own shadow slots, so focus
+   rings survive; arbitrary `shadow-[inset…]` rules (accent bars) too. */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(.shadow, [class*="shadow-xs"], [class*="shadow-sm"], [class*="shadow-md"], [class*="shadow-lg"], [class*="shadow-xl"], [class*="shadow-2xl"]) {
+  --tw-shadow: 0 0 #0000;
+}
+
+/* Binary-ish corners: everything rounded becomes a 2px block. */
+:is(html.ascii-console, html:has(.ascii-console-root)) [class*="rounded"]:not([class*="rounded-none"]) {
+  border-radius: 2px;
+}
+/* …except things that are genuinely round dots */
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-round {
+  border-radius: 9999px;
+}
+
+/* Medium weights only — mono at 600/700 turns muddy. */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(.font-semibold, .font-bold, .type-label, b, strong) {
+  font-weight: 500;
+}
+
+/* Polar type utilities are literal px; bring them onto the mono scale. */
+:is(html.ascii-console, html:has(.ascii-console-root)) .type-body-sm {
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .type-body {
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .type-body-lg {
+  font-size: 15px;
+  line-height: 1.5;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .type-label {
+  font-size: 13px;
+  line-height: 1.5;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(.type-mono, .type-eyebrow) {
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .type-eyebrow {
+  letter-spacing: 0.08em;
+}
+
+/* Page + section titles → Inter Tight light, like the public site. */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(main h1, .type-display-md, .type-h1, .type-h2, .k-display) {
+  font-family: var(--a-font-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  color: var(--a-fg);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) main h1 {
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.1;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .type-display-md {
+  font-size: 28px;
+  line-height: 1.15;
+}
+/* Big numbers (stat tiles) read better in the display face too. */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(.text-5xl, .text-4xl, .text-3xl).font-extralight {
+  font-family: var(--a-font-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 300;
+}
+
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(a, button):focus-visible {
+  outline: 1px solid var(--a-accent);
+  outline-offset: 2px;
+}
+
+/* ── controls ──────────────────────────────────────────────────────────── */
+
+/* Primary action (Button default variant: bg-ink text-canvas) → orange. */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).bg-ink.text-canvas {
+  background-color: var(--a-accent);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  color: var(--a-accent-fg);
+  border: 1px solid var(--a-accent);
+  opacity: 1;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).bg-ink.text-canvas:hover {
+  background-color: var(--a-accent-hover);
+  border-color: var(--a-accent-hover);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).bg-ink.text-canvas:disabled {
+  opacity: 0.5;
+}
+
+/* Every shadcn button: blocky mono, regular weight, hairline outlines. */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).inline-flex.whitespace-nowrap.cursor-pointer {
+  font-weight: 400;
+  letter-spacing: 0;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).border-surface-1 {
+  border-color: var(--a-line-strong);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).border-surface-1:hover {
+  border-color: var(--a-muted);
+  background-color: var(--a-raised);
+}
+/* Destructive: outlined in the "bad" colour rather than a red slab. */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).bg-red-500 {
+  background-color: transparent;
+  border: 1px solid color-mix(in srgb, var(--a-bad) 55%, transparent);
+  color: var(--a-bad);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).bg-red-500:hover {
+  background-color: color-mix(in srgb, var(--a-bad) 10%, transparent);
+  border-color: var(--a-bad);
+}
+
+/* Inputs, textareas, select triggers: panel fill, strong hairline, orange focus. */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, button[role="combobox"]).border {
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  border-color: var(--a-line-strong);
+  color: var(--a-fg);
+  box-shadow: none;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(input, textarea, button[role="combobox"]).border:focus,
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(input, textarea, button[role="combobox"]).border:focus-visible {
+  border-color: var(--a-accent);
+  box-shadow: none;
+  outline: none;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(input, textarea)::placeholder {
+  color: var(--a-dim);
+}
+
+/* Checkbox / switch: accent when on. */
+:is(html.ascii-console, html:has(.ascii-console-root)) button[role="checkbox"] {
+  border-color: var(--a-line-strong);
+  background-color: var(--a-panel);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) button[role="checkbox"]:is([data-state="checked"], [data-state="indeterminate"]) {
+  background-color: var(--a-accent);
+  border-color: var(--a-accent);
+  color: var(--a-accent-fg);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) button[role="switch"] {
+  border: 1px solid var(--a-line-strong);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) button[role="switch"][data-state="unchecked"] {
+  background-color: var(--a-raised);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) button[role="switch"][data-state="checked"] {
+  background-color: var(--a-accent);
+  border-color: var(--a-accent);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) button[role="switch"] > span {
+  background-color: var(--a-bg);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) button[role="switch"][data-state="checked"] > span {
+  background-color: var(--a-accent-fg);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) button[role="radio"][data-state="checked"] {
+  border-color: var(--a-accent);
+  color: var(--a-accent);
+}
+
+/* Tabs / segmented controls: active = underline-free raised block. */
+:is(html.ascii-console, html:has(.ascii-console-root)) [role="tablist"] {
+  gap: 0;
+  border: 1px solid var(--a-line);
+  background: var(--a-panel);
+  padding: 0;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) [role="tab"] {
+  color: var(--a-muted);
+  border-right: 1px solid var(--a-line);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) [role="tab"]:last-child {
+  border-right: 0;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) [role="tab"][data-state="active"] {
+  background-color: var(--a-bg);
+  color: var(--a-fg);
+  box-shadow: inset 0 -2px 0 var(--a-accent);
+}
+
+/* Badges (div.rounded-full.border.px-2.text-xs) → square tags. */
+:is(html.ascii-console, html:has(.ascii-console-root)) div.inline-flex.items-center.border.text-xs {
+  border-color: var(--a-line-strong);
+  letter-spacing: 0.04em;
+  padding-block: 1px;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) div.inline-flex.items-center.border.text-xs.bg-ink {
+  background-color: var(--a-fg);
+  border-color: var(--a-fg);
+  color: var(--a-bg);
+}
+
+/* ── overlays (portals) ────────────────────────────────────────────────── */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is([role="dialog"], [role="alertdialog"]) {
+  background-color: var(--a-bg);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  border-color: var(--a-line-strong);
+  color: var(--a-fg);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is([role="dialog"], [role="alertdialog"]) :is(h2, [id$="-title"]) {
+  font-family: var(--a-font-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 300;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--a-fg);
+}
+/* Dim + desaturate the page behind modals rather than an 80% black slab. */
+:is(html.ascii-console, html:has(.ascii-console-root)) [data-state="open"].fixed.inset-0.z-50:not([role]) {
+  background-color: color-mix(in srgb, var(--a-bg) 70%, transparent);
+  backdrop-filter: grayscale(0.6);
+}
+
+:is(html.ascii-console, html:has(.ascii-console-root)) :is([role="menu"], [role="listbox"], [data-radix-popper-content-wrapper] > [data-state]) {
+  background-color: var(--a-bg);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  border: 1px solid var(--a-line-strong);
+  color: var(--a-fg);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]) {
+  font-size: 12.5px;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is([role="menuitem"], [role="option"], [role="menuitemradio"], [role="menuitemcheckbox"]):is(:focus, [data-highlighted], [data-selected="true"]) {
+  background-color: var(--a-raised);
+  color: var(--a-fg);
+  box-shadow: inset 2px 0 0 var(--a-accent);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) [role="menu"] [role="separator"],
+:is(html.ascii-console, html:has(.ascii-console-root)) [role="listbox"] [role="separator"] {
+  background-color: var(--a-line);
+}
+/* Tooltips (bg-primary) → ink chip. */
+:is(html.ascii-console, html:has(.ascii-console-root)) [data-radix-popper-content-wrapper] > .bg-primary {
+  background-color: var(--a-fg);
+  background-image: none;
+  color: var(--a-bg);
+  border: 0;
+  font-size: 11.5px;
+}
+
+/* Toasts */
+:is(html.ascii-console, html:has(.ascii-console-root)) [data-sonner-toast] {
+  font-family: var(--a-font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  border-radius: 2px;
+  border: 1px solid var(--a-line-strong);
+  border-left: 2px solid var(--a-line-strong);
+  background-color: var(--a-panel);
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+  color: var(--a-fg);
+  box-shadow: none;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) [data-sonner-toast][data-type="success"] {
+  border-left-color: var(--a-ok);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) [data-sonner-toast][data-type="error"] {
+  border-left-color: var(--a-bad);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) [data-sonner-toast] [data-icon] {
+  color: var(--a-accent);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) [data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--a-ok);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) [data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--a-bad);
+}
+
+/* ── tables ────────────────────────────────────────────────────────────── */
+:is(html.ascii-console, html:has(.ascii-console-root)) main table thead :is(th, td) {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--a-muted);
+}
+
+/* ── skeletons: hatched instead of grey slabs ──────────────────────────── */
+:is(html.ascii-console, html:has(.ascii-console-root)) .animate-pulse :is(.bg-gray-100),
+:is(html.ascii-console, html:has(.ascii-console-root)) .animate-pulse.bg-gray-100 {
+  background-color: var(--a-panel);
+  background-image: var(--a-hatch);
+}
+
+/* ── console primitives (k-*) ──────────────────────────────────────────── */
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--a-muted);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-rule::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--a-line-strong);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-accent {
+  color: var(--a-accent);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-dim {
+  color: var(--a-dim);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-ok {
+  color: var(--a-ok);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-cells {
+  display: grid;
+  gap: 1px;
+  background: var(--a-line);
+  border: 1px solid var(--a-line);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-cells > * {
+  background-color: var(--a-bg);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-cells > a:hover {
+  background-color: var(--a-panel);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-grain {
+  background-image: var(--a-noise);
+  background-size: 180px 180px;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-hatch {
+  background-image: var(--a-hatch);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border: 1px solid var(--a-line-strong);
+  border-radius: 2px;
+  color: var(--a-muted);
+  white-space: nowrap;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-tag.k-tag-accent {
+  border-color: var(--a-accent);
+  color: var(--a-accent);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-tag.k-tag-ok {
+  border-color: color-mix(in srgb, var(--a-ok) 60%, transparent);
+  color: var(--a-ok);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-link {
+  color: var(--a-accent);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) .k-kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--a-line-strong);
+  border-radius: 2px;
+  font-size: 10.5px;
+  color: var(--a-muted);
+}
+
+/* Workspace panels: every `rounded-2xl … bg-pillar` card in the pages reads
+   as a hairline cell on the canvas (like the site's .cells), not a filled
+   card. Covers the dark: variants (dark:bg-polar-800 / border-transparent). */
+:is(html.ascii-console, html:has(.ascii-console-root)) main :is(div, section, form, a).bg-pillar.border {
+  background-color: var(--a-bg);
+  background-image: none;
+  border-color: var(--a-line);
+}
+
+/* Settings groups / lists use ring-1 for their outline. */
+:is(html.ascii-console, html:has(.ascii-console-root)) .ring-hairline {
+  --tw-ring-color: var(--a-line);
+}
+
+/* Section titles (Section / settings headings) → display face. */
+:is(html.ascii-console, html:has(.ascii-console-root)) main :is(h2.text-lg, h2.type-body-lg, h2.text-xl) {
+  font-family: var(--a-font-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 300;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--a-fg);
+}
+
+/* Secondary buttons: hairline block, faint panel fill. */
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).inline-flex.bg-pillar.text-ink-navy {
+  border-color: var(--a-line-strong);
+  background-color: var(--a-panel);
+}
+:is(html.ascii-console, html:has(.ascii-console-root)) :is(button, a).inline-flex.bg-pillar.text-ink-navy:hover {
+  border-color: var(--a-muted);
+  background-color: var(--a-raised);
+}
