@@ -1,0 +1,15 @@
+{
+  "$schema": "https://usekeyring.dev/schema/policy.json",
+  "actions": {
+    "docs.read": "Read docs",
+    "docs.edit": { "name": "Edit docs", "category": "Content" }
+  },
+  "roles": {
+    "viewer": ["docs.read"],
+    "editor": { "name": "Editor", "actions": ["docs.*"] }
+  },
+  "defaultRole": "viewer",
+  "spaces": {
+    "acme": { "name": "Acme", "actions": { "tickets.close": "Close tickets" }, "roles": { "agent": ["tickets.close"] } }
+  }
+}

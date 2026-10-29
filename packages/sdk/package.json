@@ -1,7 +1,7 @@
 {
   "name": "@usekeyring/sdk",
-  "version": "0.2.0",
-  "description": "TypeScript client for the Keyring Management API (server + browser)",
+  "version": "0.3.0",
+  "description": "Keyring authorization for TypeScript: in-process RBAC/ABAC engine (local mode), your own Postgres (embedded), or the hosted API",
   "type": "module",
   "license": "MIT",
   "main": "./dist/index.js",
@@ -14,6 +14,14 @@
     "./postgres": {
       "types": "./dist/postgres.d.ts",
       "import": "./dist/postgres.js"
+    },
+    "./local": {
+      "types": "./dist/local/index.d.ts",
+      "import": "./dist/local/index.js"
+    },
+    "./local/file": {
+      "types": "./dist/local/file-store.d.ts",
+      "import": "./dist/local/file-store.js"
     }
   },
   "files": [
@@ -25,13 +33,16 @@
     "check-types": "tsc --noEmit --incremental --tsBuildInfoFile .cache/typecheck.tsbuildinfo",
     "dev": "tsc -p tsconfig.json --watch",
     "test": "bun test",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "test:types": "tsc -p tsconfig.typetest.json"
   },
   "devDependencies": {
     "@keyring/typescript-config": "workspace:*",
+    "@types/node": "^22.0.0",
     "typescript": "^5.8.3"
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "sideEffects": false
 }

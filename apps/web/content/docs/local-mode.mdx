@@ -1,0 +1,204 @@
+---
+title: Local mode (no database)
+description: "@usekeyring/sdk/local — Keyring's full RBAC/ABAC engine in-process. No Postgres, no server, no hosted API, zero dependencies."
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Local mode runs the Keyring engine inside your process: roles, actions, spaces, temporary grants and ABAC conditions, with the **same semantics as the Postgres schema** (`drizzle/native.sql`). It's the fastest way to add authorization to a TypeScript app, and the same policy file moves to Postgres or hosted Keyring later without changes.
+
+- **Zero runtime dependencies.** Runs in Node, Bun, Deno, edge runtimes and the browser (about 9 KB gzipped).
+- **Same API** as `@usekeyring/sdk/postgres` and the hosted `Keyring` client: same method names, result shapes and typed errors.
+- **Pinned to the database.** Parity tests run the same scenarios against this engine and against `native.sql` in PGlite and require identical results, errors included.
+
+## Quickstart
+
+```bash
+npm i @usekeyring/sdk
+```
+
+```json title="keyring.policy.json"
+{
+  "actions": {
+    "invoices.read": "Read invoices",
+    "invoices.refund": { "name": "Refund invoices", "category": "Billing" }
+  },
+  "roles": {
+    "viewer": ["invoices.read"],
+    "finance": { "name": "Finance", "actions": ["invoices.*"] },
+    "admin": ["*"]
+  },
+  "defaultRole": "viewer"
+}
+```
+
+```ts
+import { createKeyring } from "@usekeyring/sdk/local";
+import policy from "./keyring.policy.json" with { type: "json" };
+
+export const keyring = createKeyring({ policy });
+
+await keyring.provisionSubject({ subject: user.id });          // → defaultRole ("viewer")
+await keyring.grantRole({ role: "finance", subject: user.id });
+
+await keyring.can(user.id, "invoices.refund");                 // true
+await keyring.check(user.id, "invoices.refund");               // { subject, permission, space, allowed }
+await keyring.assert(user.id, "invoices.refund");              // throws ForbiddenError on deny
+```
+
+This is the same `keyring.policy.json` that `keyring push` applies to Postgres or hosted Keyring. Role action lists accept exact slugs, `resource.*` and `*`. Invalid policies throw a `BadRequestError` (`body.code = "policy_invalid"`) that lists every problem with its JSON path.
+
+## Type-safe slugs
+
+Pass the policy as a literal (or import it as JSON) and action, role and space slugs are inferred, so a typo fails to compile:
+
+```ts
+import { createKeyring, type KeyringPolicy } from "@usekeyring/sdk/local";
+
+const policy = {
+  actions: { "invoices.read": "Read", "invoices.refund": "Refund" },
+  roles: { viewer: ["invoices.read"], finance: ["invoices.*"] },
+  spaces: { acme: { actions: { "tickets.close": "Close" }, roles: { agent: ["tickets.close"] } } },
+} as const satisfies KeyringPolicy; // or: definePolicy({ ... })
+
+const keyring = createKeyring({ policy });
+
+keyring.check("u1", "invoices.refnud");                         // ✗ type error
+keyring.check("u1", "invoices.*");                              // ✗ wildcards aren't actions
+keyring.check("u1", "tickets.close", { space: "acme" });        // ✓ per-space unions
+keyring.check("u1", "invoices.read", { space: "acme" });        // ✗ spaces don't inherit
+keyring.grantRole({ role: "agent", subject: "u1", space: "acme" }); // ✓
+```
+
+Helper types: `ActionOf<typeof policy, "acme">`, `RoleOf<…>` and `SpaceOf<…>`. With a **dynamic model** (roles or spaces created at runtime), type the policy as plain `KeyringPolicy` and every slug becomes `string`.
+
+## Spaces, temporary grants, ABAC
+
+```ts
+// Spaces are isolated scopes, with no inheritance in either direction.
+await keyring.grantRole({ role: "agent", subject: "u1", space: "acme" });
+await keyring.can("u1", "tickets.close", { space: "acme" });   // true
+await keyring.can("u1", "tickets.close");                      // false (platform scope)
+
+// Temporary access: ttlSeconds 30..31536000, or expiresAt (future, ≤ 366 days).
+await keyring.grantRole({ role: "finance", subject: "u1", ttlSeconds: 300 });
+
+// ABAC: a condition on the grant, evaluated against stored attrs and request context.
+await keyring.grantRole({ role: "admin", subject: "u2", condition: { attr: "plan", in: ["pro", "enterprise"] } });
+await keyring.setSubjectAttrs({ subject: "u2", attrs: { plan: "pro" } }); // shallow merge
+await keyring.can("u2", "invoices.refund");                              // true
+await keyring.can("u2", "invoices.refund", { context: { plan: "free" } }); // false (context wins)
+```
+
+**Condition operators:** `equals`, `in`, `gt`, `gte`, `lt`, `lte`, `exists`, composed with `{ all: [...] }`, `{ any: [...] }` and `{ not: {...} }`. Add `from: "subject" | "context"` to read only one source; the default `"either"` lets request context override stored attrs. Equality is deep and type-strict (`"1"` is not `1`), numeric comparisons cast like Postgres (`"42"` works), and a missing attribute fails every operator except `exists: false`.
+
+Pass `now: () => Date` to `createKeyring` to control time in tests.
+
+## `explain()`: why allowed or denied
+
+```ts
+const why = await keyring.explain("u2", "invoices.refund", { context: { plan: "free" } });
+// {
+//   allowed: false, space: null,
+//   matched: [{ role: "admin", expiresAt: null, expired: false,
+//               condition: { attr: "plan", in: ["pro", "enterprise"] },
+//               conditionResult: false, granted: false,
+//               trace: [{ attr: "plan", op: "in", actual: "free", source: "context", result: false }] }],
+//   reasons: [
+//     "Scope: platform — only grants made without a space count.",
+//     "Role \"admin\" grants \"invoices.refund\", but its condition {\"in\": [\"pro\", \"enterprise\"], \"attr\": \"plan\"} is false (plan in [\"pro\", \"enterprise\"] — got \"free\" from request context → false).",
+//     "Decision: DENY"
+//   ]
+// }
+```
+
+`explain()` runs exactly the same evaluation as `check()`. It also reports expired grants, roles held in other scopes, which roles would grant the action, and suggests the nearest slug for a typo.
+
+## Storage
+
+State (grants, subject attributes, runtime model changes) lives in a `KeyringStore`. The policy always comes from code.
+
+| Store | Import | Notes |
+| --- | --- | --- |
+| `memoryStore()` | `@usekeyring/sdk/local` | Default. Synchronous, per process. |
+| `jsonFileStore(path)` | `@usekeyring/sdk/local/file` | Node/Bun. One JSON file, atomic temp-file + rename writes, single writer. A separate entry point, so browser and edge bundles never import `node:fs`. |
+| your own | implement `KeyringStore` | Redis, KV, DynamoDB, your DB, `localStorage`… |
+
+```ts
+import { createKeyring } from "@usekeyring/sdk/local";
+import { jsonFileStore } from "@usekeyring/sdk/local/file";
+
+const keyring = createKeyring({ policy, store: jsonFileStore(".keyring/state.json") });
+```
+
+A custom store is six methods, each sync or async. A check performs **one** `getSubject` read; the runtime model is read once at startup (call `keyring.reload()` to pick up changes made by another process).
+
+```ts
+import type { KeyringStore } from "@usekeyring/sdk/local";
+
+export const redisStore = (redis: Redis): KeyringStore => ({
+  getSubject: async (id) => JSON.parse((await redis.get(`kr:s:${id}`)) ?? "null") ?? undefined,
+  setSubject: async (id, s) => void (await redis.set(`kr:s:${id}`, JSON.stringify(s))),
+  deleteSubject: async (id) => void (await redis.del(`kr:s:${id}`)),
+  listSubjects: async () => (await redis.keys("kr:s:*")).map((k) => k.slice(5)),
+  getModel: async () => JSON.parse((await redis.get("kr:model")) ?? "null") ?? undefined,
+  setModel: async (m) => void (await redis.set("kr:model", JSON.stringify(m))),
+});
+```
+
+The engine serializes writes to one subject within a process. Across processes, make `setSubject` last-writer-wins or use your store's compare-and-set. With a synchronous store, `keyring.canSync(subject, action)` gives a synchronous answer for render paths and hot loops.
+
+## Snapshots and migrating to Postgres or hosted
+
+```ts
+const snapshot = await keyring.exportState();  // plain JSON: runtime model + subjects
+await other.importState(snapshot);             // e.g. memory → file store ("merge" keeps existing)
+```
+
+To graduate to your own Postgres or hosted Keyring, push the same policy there (`keyring push`), then replay the state through the target client:
+
+```ts
+import { replayState } from "@usekeyring/sdk/local";
+import { createKeyring as createPostgresKeyring } from "@usekeyring/sdk/postgres";
+
+const target = createPostgresKeyring({ database: pool, apiKey: process.env.KEYRING_SECRET_KEY! });
+const report = await replayState(await keyring.exportState(), target); // or a hosted `new Keyring(...)`
+// { subjects, grants, model, skipped: [...] } — expired grants are skipped
+```
+
+Your application code stays the same: only the `createKeyring` import changes.
+
+## Telemetry hook
+
+```ts
+createKeyring({
+  policy,
+  onDecision: (e) => log.info(e),
+  // { eventType: "check", subject, permission, space, allowed, matchedRoles, context, createdAt }
+});
+```
+
+These are the same fields Postgres mode writes to `check_events`. The hook is fire-and-forget: errors in it never affect a check. `track()` emits `eventType: "custom"`.
+
+## API
+
+`check`, `can`, `canSync`, `assert`, `explain`, `grantRole`, `revokeRole`, `replaceRole`, `provisionSubject`, `setSubjectAttrs`, `getSubjectAccess`, `listRoles`, `listPermissions` / `listActions`, `listSpaces`, `createRole`, `createPermission` / `createAction`, `createSpace`, `deleteSpace`, `setDefaultRole`, `purgeExpiredGrants`, `track`, `exportState`, `importState`, `reload`.
+
+Errors are the SDK's typed errors with the database's reason codes: an unknown role throws `NotFoundError` with `body.code = "unknown_role"`, a bad TTL throws `BadRequestError` with `"invalid_ttl_seconds"`, and so on.
+
+<Callout type="info">Differences from Postgres mode: there are no API keys or scopes (the engine trusts its caller, like any in-process library), so there are no subject tokens and no webhooks. Spaces declared in the policy can't be deleted at runtime (`space_in_policy`); remove them from the policy instead. A grant whose role was removed from the policy is ignored, and it becomes active again if the role comes back.</Callout>
+
+## Local, Postgres or hosted?
+
+| | Local (`/local`) | Your Postgres (`/postgres`) | Hosted (`Keyring`) |
+| --- | --- | --- | --- |
+| Infrastructure | none | your database + `keyring migrate` | none (usekeyring.dev) |
+| Check latency | in-process (microseconds) | one SQL round-trip | one HTTPS round-trip |
+| State | memory, JSON file, or your `KeyringStore` | `keyring` schema | managed |
+| Multi-instance | via a shared custom store | yes | yes |
+| API keys / scopes | — | yes | yes |
+| Console, audit log, webhooks | `onDecision` hook | `check_events`, CLI console | full web console |
+| Browser checks | yes (UX only) | no (server only) | publishable key + subject token |
+| Best for | prototypes, tests, CLIs, single-service apps, edge | production apps that own their DB | teams that want a dashboard |
+
+All three read the same `keyring.policy.json` and share one API, so you can start local and move later.

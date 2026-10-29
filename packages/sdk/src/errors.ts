@@ -59,3 +59,20 @@ export function errorFromResponse(status: number, body: KeyringErrorBody): Keyri
   if (status === 404) return new NotFoundError(message, body);
   return new ApiError(message, status, body);
 }
+
+/**
+ * Map a Keyring `RAISE EXCEPTION 'reason:detail'` message to a typed error.
+ * Shared by embedded (Postgres) and local mode so both throw identical errors:
+ * `unknown_*` → NotFoundError, `*_forbidden` → ForbiddenError, else BadRequestError.
+ */
+export function errorFromReason(message: string): KeyringError {
+  const [reason = "error", ...rest] = message.split(":");
+  const detail = rest.join(":").trim();
+  // unknown_role:viewer → "Unknown role: viewer" (code stays machine-readable)
+  const words = reason.replace(/_/g, " ");
+  const human = `${words[0]?.toUpperCase() ?? ""}${words.slice(1)}${detail ? `: ${detail}` : ""}`;
+  const body = { error: human, code: reason };
+  if (reason.startsWith("unknown_")) return new NotFoundError(human, body);
+  if (reason.endsWith("_forbidden")) return new ForbiddenError(human, body);
+  return new BadRequestError(human, body);
+}
