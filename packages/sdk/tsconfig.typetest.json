@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "noUnusedLocals": false
+  },
+  "include": ["test/**/*.ts", "test/**/*.json"],
+  "exclude": []
+}

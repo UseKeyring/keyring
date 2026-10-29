@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "quickstart",
+    "local-mode",
     "typescript-sdk",
     "cli",
     "api-reference",

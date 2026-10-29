@@ -19,9 +19,9 @@
  */
 import {
   BadRequestError,
+  errorFromReason,
   ForbiddenError,
   KeyringError,
-  NotFoundError,
   UnauthorizedError,
 } from "./errors.js";
 import type {
@@ -83,15 +83,7 @@ export function errorFromPostgres(err: unknown): KeyringError {
   if (code !== "P0001") {
     return new KeyringError(message, 500, { error: message, code: code ?? "database_error" });
   }
-  const [reason = "error", ...rest] = message.split(":");
-  const detail = rest.join(":").trim();
-  // unknown_role:viewer → "Unknown role: viewer" (code stays machine-readable)
-  const words = reason.replace(/_/g, " ");
-  const human = `${words[0]?.toUpperCase() ?? ""}${words.slice(1)}${detail ? `: ${detail}` : ""}`;
-  const body = { error: human, code: reason };
-  if (reason.startsWith("unknown_")) return new NotFoundError(human, body);
-  if (reason.endsWith("_forbidden")) return new ForbiddenError(human, body);
-  return new BadRequestError(human, body);
+  return errorFromReason(message);
 }
 
 export class PostgresKeyring {

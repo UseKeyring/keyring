@@ -9,6 +9,26 @@ bun add @usekeyring/sdk
 # or: npm i @usekeyring/sdk
 ```
 
+## Local mode (no database)
+
+The full RBAC/ABAC engine in-process: no Postgres, no server, zero dependencies (Node, Bun, Deno, edge, browser). Same methods, shapes and typed errors as the other modes, pinned to `drizzle/native.sql` by parity tests.
+
+```ts
+import { createKeyring } from "@usekeyring/sdk/local";
+import policy from "./keyring.policy.json" with { type: "json" }; // same file `keyring push` uses
+
+const keyring = createKeyring({ policy }); // store: memoryStore() by default
+await keyring.grantRole({ role: "editor", subject: "user_123", ttlSeconds: 3600 });
+await keyring.can("user_123", "docs.edit"); // true; typos in slugs are TS errors with a literal/JSON policy
+await keyring.explain("user_123", "docs.edit"); // { allowed, matched: [...], reasons: [...] }
+```
+
+- Persist with `jsonFileStore(path)` from `@usekeyring/sdk/local/file` (Node/Bun), or implement the 6-method `KeyringStore` (Redis, KV, your DB).
+- `exportState()` / `importState()` move state between stores; `replayState(snapshot, postgresOrHostedClient)` migrates it to the other modes.
+- `onDecision` hook for logging (same fields as `check_events`); `canSync()` for synchronous stores.
+
+Docs: https://usekeyring.dev/docs/local-mode
+
 ## Embedded mode (your own Postgres)
 
 No hosted API in the path — every call is one `SELECT keyring.api_*()` in your database. Install the schema with `npx @usekeyring/cli migrate && npx @usekeyring/cli bootstrap`.
