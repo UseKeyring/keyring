@@ -42,8 +42,9 @@ export type NavEntry = {
 export function ConsoleWordmark() {
   return (
     <Link href="/" className="flex items-center gap-2.5 px-2 py-2">
-      <KeyringMark className="h-6 w-6" />
-      <span className="type-label text-[15px] text-ink">Keyring</span>
+      <KeyringMark className="h-[18px] w-[18px] text-ink" />
+      <span className="k-display text-[17px] tracking-[-0.02em] text-ink">Keyring</span>
+      <span className="k-tag">console</span>
     </Link>
   );
 }
@@ -104,23 +105,23 @@ export function ConsoleNavLink({
       // the app pixel-for-pixel.
       className={cn(
         sidebarMenuButtonVariants({ variant: "default", size: "default" }),
-        "flex flex-row items-center rounded-full border border-transparent px-1.5 transition-colors group-data-[collapsible=icon]:px-0! group-data-[collapsible=icon]:justify-center!",
+        "flex h-8 flex-row items-center border border-transparent px-1.5 font-normal! transition-colors group-data-[collapsible=icon]:px-0! group-data-[collapsible=icon]:justify-center!",
         active
-          ? "border-hairline! bg-pillar! text-ink! shadow-xs dark:border-polar-800! dark:bg-polar-900! dark:text-white!"
-          : "text-ink-muted hover:text-ink dark:text-polar-500 dark:hover:text-polar-200",
+          ? "border-hairline! bg-canvas! text-ink! shadow-[inset_2px_0_0_var(--a-accent)]"
+          : "text-ink-muted hover:bg-pillar! hover:text-ink",
         className,
       )}
       {...slotRest}
     >
       <span
         className={cn(
-          "flex flex-col items-center justify-center overflow-visible rounded-full bg-transparent text-[15px]",
-          active && "text-ink! dark:text-white!",
+          "flex flex-col items-center justify-center overflow-visible bg-transparent",
+          active ? "k-accent" : "text-ink-subtle",
         )}
       >
         <SolarIcon name={icon} className="h-4 w-4" />
       </span>
-      <span className="relative ml-2 overflow-visible text-sm font-medium group-data-[collapsible=icon]:hidden">
+      <span className="relative ml-2 overflow-visible text-[13px] group-data-[collapsible=icon]:hidden">
         {label}
       </span>
     </Link>
@@ -141,29 +142,52 @@ export function ConsoleUserRow({
       <Avatar
         name={displayName || email || "?"}
         avatar_url={avatarUrl ?? null}
-        className="h-6 w-6 shrink-0"
+        className="h-6 w-6 shrink-0 border border-hairline"
       />
-      <span className="min-w-0 truncate group-data-[collapsible=icon]:hidden">{email}</span>
-      <SolarIcon name="chevronDown" className="ml-auto h-4 w-4 shrink-0 group-data-[collapsible=icon]:hidden" />
+      <span className="min-w-0 truncate text-[12px] text-ink-muted group-data-[collapsible=icon]:hidden">
+        {email}
+      </span>
+      <SolarIcon
+        name="chevronDown"
+        className="ml-auto h-3.5 w-3.5 shrink-0 text-ink-subtle group-data-[collapsible=icon]:hidden"
+      />
     </div>
   );
 }
 
 export function ConsoleMain({ children }: { children: React.ReactNode }) {
   return (
-    <main className="relative flex min-w-0 flex-1 flex-col rounded-2xl border border-hairline bg-white shadow-xs dark:border-polar-800 dark:bg-polar-900">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pt-8 pb-8 md:px-8">
+    <main className="relative flex min-w-0 flex-1 flex-col">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 pt-8 pb-8 md:px-10">
         {children}
       </div>
     </main>
   );
 }
 
+/** `[01] ROLES ------------` section rule, as on the public site. */
+export function ConsoleSectionLabel({
+  n,
+  children,
+  className,
+}: {
+  n: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("k-label k-rule", className)}>
+      <span className="k-accent">[{n}]</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
 export function OverviewHeader({ orgName }: { orgName: string | null }) {
   return (
     <div>
-      <h1 className="text-2xl font-medium whitespace-nowrap text-ink">Overview</h1>
-      <p className="type-body-sm mt-1 text-ink-muted">
+      <h1 className="whitespace-nowrap">Overview</h1>
+      <p className="type-body-sm mt-2 text-ink-muted">
         {orgName
           ? `Access control for ${orgName} — actions compose into roles, granted to users.`
           : "Actions compose into roles, granted to users."}
@@ -181,14 +205,23 @@ export type OverviewStat = {
 
 export function OverviewStats({ stats }: { stats: OverviewStat[] }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {stats.map((s) => {
-        const cardClassName =
-          "rounded-2xl border border-hairline bg-pillar p-6 dark:border-transparent dark:bg-polar-800";
+    <div className="k-cells grid-cols-2 lg:grid-cols-4">
+      {stats.map((s, i) => {
+        const cardClassName = "group block p-5 transition-colors md:p-6";
         const body = (
           <>
-            <div className="type-body-sm text-ink-muted">{s.label}</div>
-            <div className="mt-2 text-5xl font-extralight tracking-tight text-ink tabular-nums">
+            <div className="flex items-center justify-between">
+              <span className="k-label">
+                <span className="k-dim">{String(i + 1).padStart(2, "0")} </span>
+                {s.label}
+              </span>
+              {s.readable && (
+                <span aria-hidden className="text-ink-subtle transition-colors group-hover:text-(--a-accent)">
+                  →
+                </span>
+              )}
+            </div>
+            <div className="mt-6 text-5xl font-extralight tracking-tight text-ink tabular-nums">
               {s.readable ? s.value : "–"}
             </div>
           </>
@@ -219,15 +252,15 @@ export function OverviewMatrix({
   showEmptyHint?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-hairline bg-pillar p-6 md:p-8 dark:border-transparent dark:bg-polar-800">
-      <div className="type-body-sm text-ink">Role matrix</div>
-      <div className="mt-4 overflow-x-auto">
-        <table className="type-body-sm w-full min-w-[560px]">
+    <div className="space-y-4">
+      <ConsoleSectionLabel n="02">Role matrix</ConsoleSectionLabel>
+      <div className="overflow-x-auto border border-hairline">
+        <table className="w-full min-w-[560px] border-collapse text-[12.5px]">
           <thead>
-            <tr className="type-mono text-left text-ink-muted">
-              <th className="pb-3 font-normal">Action</th>
+            <tr className="k-hatch bg-pillar text-left">
+              <th className="border-b border-hairline px-4 py-2.5">Action</th>
               {roles.map((r) => (
-                <th key={r.id} className="pb-3 font-normal">
+                <th key={r.id} className="border-b border-l border-hairline px-4 py-2.5 text-center">
                   {r.name}
                 </th>
               ))}
@@ -235,15 +268,15 @@ export function OverviewMatrix({
           </thead>
           <tbody className="text-ink">
             {perms.map((p) => (
-              <tr key={p.id} className="border-t border-hairline">
-                <td className="py-3 pr-4">{p.slug}</td>
+              <tr key={p.id} className="border-t border-hairline first:border-t-0 hover:bg-pillar">
+                <td className="px-4 py-2.5 pr-4">{p.slug}</td>
                 {roles.map((r) => {
                   const on = rolePerms.some(
                     (rp) => rp.role_id === r.id && rp.permission_id === p.id,
                   );
                   return (
-                    <td key={r.id} className="py-3">
-                      <span className={on ? "text-ink" : "text-ink-subtle"}>{on ? "✓" : "—"}</span>
+                    <td key={r.id} className="border-l border-hairline px-4 py-2.5 text-center">
+                      <span className={on ? "k-accent" : "text-ink-subtle"}>{on ? "[x]" : "[ ]"}</span>
                     </td>
                   );
                 })}
@@ -251,8 +284,8 @@ export function OverviewMatrix({
             ))}
             {showEmptyHint && (
               <tr>
-                <td className="py-6 text-ink-muted" colSpan={roles.length + 1}>
-                  Nothing defined yet — start with Actions, then Roles.
+                <td className="px-4 py-8 text-ink-muted" colSpan={roles.length + 1}>
+                  &gt; Nothing defined yet — start with Actions, then Roles.
                 </td>
               </tr>
             )}
@@ -430,138 +463,124 @@ export function OverviewSetupSteps({
     toast.success("AI Agent Setup Prompt copied to clipboard!");
   };
 
+  const barCells = 20;
+  const filled = Math.round((completedCount / steps.length) * barCells);
+
   return (
-    <div className="rounded-2xl border border-hairline bg-pillar p-6 md:p-8 dark:border-transparent dark:bg-polar-800 space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="type-body-lg font-medium text-ink">Get started with Keyring</h2>
-            {completedCount === steps.length && (
-              <span className="type-mono rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs text-emerald-600 dark:text-emerald-400">
-                Setup Complete
-              </span>
-            )}
+    <div className="space-y-4">
+      <ConsoleSectionLabel n="01">Get started</ConsoleSectionLabel>
+      <div className="border border-hairline">
+        <div className="flex flex-col gap-4 border-b border-hairline p-5 md:flex-row md:items-center md:justify-between md:p-6">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 className="k-display text-[22px] text-ink">Get started with Keyring</h2>
+              {completedCount === steps.length && (
+                <span className="k-tag k-tag-ok">Setup complete</span>
+              )}
+            </div>
+            <p className="type-body-sm mt-1 text-ink-muted">
+              Complete or skip these steps, or copy the prompt below into your AI agent to automate setup.
+            </p>
           </div>
-          <p className="type-body-sm mt-1 text-ink-muted">
-            Complete or skip these steps, or copy the prompt below into your AI agent to automate setup.
-          </p>
+          <div className="flex flex-col items-start gap-1 md:items-end">
+            <div className="text-[12px] whitespace-pre text-ink-muted" aria-hidden>
+              <span className="k-dim">[</span>
+              <span className="k-accent">{"#".repeat(filled)}</span>
+              <span className="k-dim">{"-".repeat(barCells - filled)}</span>
+              <span className="k-dim">]</span> {progressPercent}%
+            </div>
+            <div className="text-[11px] text-ink-subtle">
+              {completedCount} of {steps.length} completed
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col items-start gap-1 md:items-end">
-          <div className="type-mono text-xs text-ink-muted">
-            {completedCount} of {steps.length} completed ({progressPercent}%)
-          </div>
-          <div className="h-1.5 w-36 overflow-hidden rounded-full bg-hairline dark:bg-polar-700">
+
+        <div className="k-cells grid-cols-1 border-0 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step, idx) => (
             <div
-              className="h-full bg-ink transition-all duration-300 dark:bg-polar-100"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {steps.map((step, idx) => (
-          <div
-            key={step.id}
-            className={`flex flex-col justify-between rounded-xl border p-5 transition-colors ${
-              step.isDone
-                ? "border-hairline bg-canvas/60 dark:border-polar-700/50 dark:bg-polar-900/40"
-                : "border-hairline bg-canvas dark:border-polar-700 dark:bg-polar-900"
-            }`}
-          >
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="type-mono text-xs text-ink-muted">Step 0{idx + 1}</span>
-                <div className="flex items-center gap-1.5">
-                  {!step.autoCompleted && (
-                    <button
-                      type="button"
-                      onClick={() => toggleSkip(step.id)}
-                      className="type-mono text-[11px] text-ink-muted hover:text-ink hover:underline"
-                    >
-                      {step.isSkipped ? "Unskip" : "Skip"}
-                    </button>
-                  )}
-                  <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
-                      step.autoCompleted
-                        ? "bg-ink text-white dark:bg-white dark:text-polar-950"
-                        : step.isSkipped
-                        ? "bg-hairline text-ink-muted dark:bg-polar-700"
-                        : "border border-hairline text-ink-muted dark:border-polar-600"
-                    }`}
-                  >
-                    {step.isDone ? "✓" : idx + 1}
+              key={step.id}
+              className={`flex flex-col justify-between p-5 transition-colors ${
+                step.isSkipped ? "k-hatch" : step.isDone ? "bg-pillar!" : ""
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="k-label">
+                    <span className={step.isDone ? "k-dim" : "k-accent"}>[0{idx + 1}]</span> step
                   </span>
+                  <div className="flex items-center gap-2">
+                    {!step.autoCompleted && (
+                      <button
+                        type="button"
+                        onClick={() => toggleSkip(step.id)}
+                        className="text-[11px] text-ink-muted hover:text-ink hover:underline"
+                      >
+                        {step.isSkipped ? "unskip" : "skip"}
+                      </button>
+                    )}
+                    <span
+                      className={`text-[12px] ${
+                        step.autoCompleted ? "k-ok" : step.isSkipped ? "text-ink-subtle" : "text-ink-subtle"
+                      }`}
+                    >
+                      {step.isDone ? "[✓]" : "[ ]"}
+                    </span>
+                  </div>
                 </div>
+                <h3 className={`mt-4 text-[13.5px] ${step.isDone ? "text-ink-muted" : "text-ink"}`}>
+                  {step.title}
+                  {step.isSkipped && <span className="ml-1.5 text-[10.5px] text-ink-subtle">(skipped)</span>}
+                </h3>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">{step.description}</p>
               </div>
-              <h3 className="mt-3 font-medium text-ink">
-                {step.title}
-                {step.isSkipped && (
-                  <span className="ml-1.5 type-mono text-[10px] text-ink-muted">(Skipped)</span>
-                )}
-              </h3>
-              <p className="type-body-sm mt-1 text-xs leading-relaxed text-ink-muted">
-                {step.description}
-              </p>
+              <div className="mt-5">
+                <Link href={step.href} className="k-link inline-flex items-center gap-1 text-[12px]">
+                  {step.actionText} →
+                </Link>
+              </div>
             </div>
-            <div className="mt-4 pt-2">
-              <Link
-                href={step.href}
-                className="type-body-sm inline-flex items-center gap-1 text-xs font-medium text-catppuccin-blue hover:underline"
-              >
-                {step.actionText} →
-              </Link>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-
-      {/* AI Agent Setup Prompt Card */}
-      <div className="rounded-xl border border-hairline bg-canvas p-5 dark:border-polar-700 dark:bg-polar-900">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+        {/* AI Agent Setup Prompt */}
+        <div className="border-t border-hairline p-5 md:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="type-body-sm font-medium text-ink">Set up using an AI Agent</h3>
-                {/* badges removed */}
-              </div>
-              <p className="type-body-sm text-xs text-ink-muted mt-0.5">
+              <h3 className="text-[13.5px] text-ink">
+                <span className="k-accent">&gt;_</span> Set up using an AI agent
+              </h3>
+              <p className="mt-0.5 text-[12px] text-ink-muted">
                 Paste this prompt into Antigravity, Cursor, Claude, or ChatGPT to auto-configure your actions, roles, and backend middleware.
               </p>
             </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAiPrompt((v) => !v)}
+                className="text-xs"
+              >
+                {showAiPrompt ? "Hide prompt" : "View prompt"}
+              </Button>
+              <Button type="button" size="sm" onClick={copyPrompt} className="text-xs">
+                Copy AI prompt
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAiPrompt((v) => !v)}
-              className="text-xs"
-            >
-              {showAiPrompt ? "Hide Prompt" : "View Prompt"}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={copyPrompt}
-              className="text-xs"
-            >
-              Copy AI Prompt
-            </Button>
-          </div>
-        </div>
 
-        {showAiPrompt && (
-          <div className="mt-4">
-            <div className="relative rounded-lg border border-hairline bg-pillar p-4 dark:border-polar-700 dark:bg-polar-950">
-              <pre className="type-mono whitespace-pre-wrap text-xs text-ink-muted leading-relaxed">
+          {showAiPrompt && (
+            <div className="mt-4 border border-hairline bg-pillar">
+              <div className="k-hatch flex justify-between border-b border-hairline px-4 py-2 text-[11px] text-ink-muted">
+                <span>setup-prompt.md</span>
+                <span>{aiPromptText.split("\n").length} lines</span>
+              </div>
+              <pre className="max-h-[420px] overflow-auto p-4 text-[11.5px] leading-relaxed whitespace-pre-wrap text-ink-muted">
                 {aiPromptText}
               </pre>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

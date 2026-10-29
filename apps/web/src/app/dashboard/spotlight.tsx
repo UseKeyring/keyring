@@ -23,14 +23,38 @@ export function openSpotlight() {
   window.dispatchEvent(new CustomEvent(SPOTLIGHT_EVENT));
 }
 
-export function SpotlightButton({ className }: { className?: string }) {
+export function SpotlightButton({
+  className,
+  variant = "icon",
+}: {
+  className?: string;
+  /** "bar" renders a full-width `⌕ search … ⌘K` field (sidebar). */
+  variant?: "icon" | "bar";
+}) {
+  if (variant === "bar") {
+    return (
+      <button
+        type="button"
+        onClick={openSpotlight}
+        aria-label="Search"
+        className={twMerge(
+          "flex h-8 w-full items-center gap-2 border border-hairline bg-pillar px-2 text-left text-[12px] text-ink-subtle transition-colors hover:border-surface-2 hover:text-ink-muted",
+          className,
+        )}
+      >
+        <SolarIcon name="search" className="h-3.5 w-3.5 shrink-0" />
+        <span className="flex-1">Search…</span>
+        <span className="k-kbd">⌘K</span>
+      </button>
+    );
+  }
   return (
     <button
       type="button"
       onClick={openSpotlight}
       aria-label="Search"
       className={twMerge(
-        "inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-pillar hover:text-ink",
+        "inline-flex h-8 w-8 items-center justify-center text-ink-muted transition-colors hover:bg-pillar hover:text-ink",
         className,
       )}
     >
@@ -168,13 +192,11 @@ function Result({
           {icon && (
             <span className="flex h-5 w-5 items-center justify-center text-ink-muted">{icon}</span>
           )}
-          <div className="font-medium text-ink">{title}</div>
+          <div className="text-[13px] text-ink">{title}</div>
         </div>
-        {description && <div className="text-sm text-ink-muted">{description}</div>}
+        {description && <div className="text-[11.5px] text-ink-muted">{description}</div>}
       </div>
-      <div className="-mr-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-pillar px-1.5 py-0.5 opacity-0 group-data-[selected='true']:opacity-100 dark:bg-polar-800">
-        <SolarIcon name="reply" className="h-3 w-3 text-ink-muted" />
-      </div>
+      <span className="k-kbd shrink-0 opacity-0 group-data-[selected='true']:opacity-100">↵</span>
     </div>
   );
 }
@@ -446,8 +468,17 @@ export function Spotlight({ basePath }: { basePath: string }) {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
         <Dialog.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 fixed top-[15%] left-[50%] z-50 w-full max-w-2xl translate-x-[-50%] overflow-hidden rounded-xl border border-hairline bg-white p-0 shadow-2xl dark:border-polar-800/80 dark:bg-polar-950">
+        <Dialog.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 fixed top-[15%] left-[50%] z-50 w-[calc(100%-2rem)] max-w-2xl translate-x-[-50%] overflow-hidden border border-surface-2 bg-canvas p-0">
           <Dialog.Title className="sr-only">Search</Dialog.Title>
+          <div
+            aria-hidden
+            className="k-hatch flex items-center justify-between border-b border-hairline bg-pillar px-4 py-2 text-[11px] text-ink-muted"
+          >
+            <span>~/search</span>
+            <span className="flex items-center gap-1.5">
+              <span className="k-kbd">esc</span> close
+            </span>
+          </div>
           <Command
             className="[&_[cmdk-group-heading]]:text-xxs rounded-xl border-none [&_[cmdk-group-heading]]:px-0 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-ink-muted [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group]]:px-3 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-14 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
             shouldFilter={false}
@@ -496,7 +527,7 @@ export function Spotlight({ basePath }: { basePath: string }) {
                               value={key}
                               onSelect={() => handleSelect(result)}
                               className={twMerge(
-                                "group cursor-pointer rounded-xl px-3 py-3 text-ink data-[selected=true]:bg-pillar data-[selected=true]:text-inherit dark:data-[selected=true]:bg-polar-800",
+                                "group cursor-pointer px-3 py-2.5 text-ink data-[selected=true]:bg-pillar data-[selected=true]:text-inherit data-[selected=true]:shadow-[inset_2px_0_0_var(--a-accent)]",
                                 isFirst ? "scroll-mt-12" : "",
                                 isLastItem
                                   ? "mb-3 scroll-mb-12"

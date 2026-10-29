@@ -90,12 +90,12 @@ export function TelemetryFilters({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-full border border-transparent bg-ink px-4 py-2 text-white transition-opacity hover:opacity-90 dark:border-polar-700 dark:bg-polar-800 dark:text-white"
+          className="flex h-8 items-center gap-2 border border-surface-2 px-3 text-ink transition-colors hover:border-ink-muted hover:bg-pillar data-[state=open]:border-ink-muted"
         >
           <SolarIcon name="customize" className="h-4 w-4" />
           <span className="type-body-sm font-medium">Customize</span>
           {activeCount > 0 && (
-            <span className="type-mono flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[11px]">
+            <span className="type-mono flex h-5 min-w-5 items-center justify-center bg-(--a-accent) px-1.5 text-[11px] text-(--a-accent-fg)">
               {activeCount}
             </span>
           )}

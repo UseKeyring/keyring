@@ -155,7 +155,7 @@ export function OnboardingFlow() {
 
   return (
     <div className="flex min-h-screen">
-      <div className="relative hidden w-[45%] shrink-0 lg:block">
+      <div className="relative hidden w-[45%] shrink-0 border-r border-hairline lg:block">
         {/* Plain <img>: the Next optimizer has no Workers runtime, and this
             is a static asset — identical rendering via absolute fill. */}
         <img
@@ -164,7 +164,7 @@ export function OnboardingFlow() {
           fetchPriority="high"
           loading="eager"
           decoding="async"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover grayscale-[0.35]"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/20 to-transparent" />
       </div>
@@ -192,13 +192,13 @@ export function OnboardingFlow() {
                   onClick={() => setMode(opt.value)}
                   className={
                     selected
-                      ? "flex cursor-pointer flex-col gap-1 rounded-2xl border border-hairline bg-pillar p-4 transition-colors"
-                      : "flex cursor-pointer flex-col gap-1 rounded-2xl border border-hairline bg-transparent p-4 transition-colors hover:bg-pillar/50"
+                      ? "flex cursor-pointer flex-col gap-1 border border-(--a-accent) bg-pillar p-4 text-left shadow-[inset_0_2px_0_var(--a-accent)] transition-colors"
+                      : "flex cursor-pointer flex-col gap-1 border border-hairline bg-transparent p-4 text-left transition-colors hover:border-surface-2 hover:bg-pillar"
                   }
                 >
                   <span className="flex items-center gap-2">
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full border border-blue-600">
-                      {selected && <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />}
+                    <span aria-hidden className={selected ? "k-accent text-[12px]" : "k-dim text-[12px]"}>
+                      {selected ? "(•)" : "( )"}
                     </span>
                     <span
                       className={selected ? "type-body-sm text-ink" : "type-body-sm text-ink-muted"}
@@ -213,7 +213,7 @@ export function OnboardingFlow() {
           </div>
 
           {myRequest.data ? (
-            <div className="flex flex-col gap-4 rounded-2xl border border-hairline bg-pillar p-6">
+            <div className="flex flex-col gap-4 k-grain border border-hairline bg-canvas p-6">
               <div>
                 <div className="type-body-sm text-ink">
                   Request to join “{myRequest.data.organizations?.name ?? "workspace"}” pending
@@ -251,7 +251,7 @@ export function OnboardingFlow() {
                 </div>
               </div>
             ) : (
-              <div className="flex w-full flex-col gap-4 rounded-2xl border border-hairline bg-pillar p-6">
+              <div className="flex w-full flex-col gap-4 k-grain border border-hairline bg-canvas p-6">
                 <div>
                   <div className="type-body-sm text-ink">
                     Creating a workspace requires Pro — $12 per project / month

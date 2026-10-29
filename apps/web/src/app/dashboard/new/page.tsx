@@ -109,7 +109,7 @@ export default function NewWorkspacePage() {
         </Link>
 
         <div>
-          <h1 className="type-display-sm text-ink">Create workspace</h1>
+          <h1 className="k-display text-[32px] leading-tight text-ink">Create workspace</h1>
           <p className="type-body-sm mt-1 text-ink-muted">
             Start a fresh workspace to isolate actions, roles and users.
           </p>
@@ -132,7 +132,7 @@ export default function NewWorkspacePage() {
             </div>
           </div>
         ) : (
-          <div className="flex w-full flex-col gap-4 rounded-2xl border border-hairline bg-pillar p-6">
+          <div className="flex w-full flex-col gap-4 k-grain border border-hairline bg-canvas p-6">
             <div>
               <div className="type-body-sm text-ink">
                 Creating a workspace requires Pro — $12 per project / month

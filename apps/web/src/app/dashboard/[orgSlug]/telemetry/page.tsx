@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useTheme } from "next-themes";
 import { useMyAccess } from "@/hooks/useRbac";
 import { useMyOrganization } from "@/hooks/useOrganization";
 import {
@@ -46,9 +45,9 @@ function TopBar({ label, count, max }: { label: string; count: number; max: numb
       <span className="type-mono w-40 truncate text-ink" title={label}>
         {label}
       </span>
-      <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-hairline">
+      <div className="h-1.5 min-w-0 flex-1 overflow-hidden bg-hairline">
         <div
-          className="h-full rounded-full bg-ink"
+          className="h-full bg-(--a-accent)"
           style={{ width: `${max === 0 ? 0 : Math.round((count / max) * 100)}%` }}
         />
       </div>
@@ -82,16 +81,15 @@ function MinHeightBar(props: {
   );
 }
 
-const ALLOWED_COLOR = "#2563eb";
+// ASCII console palette: the single orange accent marks allowed checks.
+const ALLOWED_COLOR = "var(--a-accent)";
 
 export default function TelemetryPage() {
   const { can, loading: accessLoading } = useMyAccess();
   const { org } = useMyOrganization();
   const base = useDashboardBase();
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  const deniedColor = isDark ? "#383942" : "#ccc";
-  const gridColor = isDark ? "#222225" : "#e5e7eb";
+  const deniedColor = "var(--a-line-strong)";
+  const gridColor = "var(--a-line)";
   const [range, setRange] = useState<TelemetryRange>("30d");
   const [permission, setPermission] = useState<string>("all");
   const [allowed, setAllowed] = useState<AllowedFilter>("all");

@@ -54,8 +54,8 @@ export function WaitlistBlocked({ email }: { email?: string | null | undefined }
   const { signOut } = useAuth();
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
-      <div className="w-full max-w-md rounded-2xl bg-pillar p-8 text-center md:p-12">
-        <p className="type-mono text-ink-muted">Private beta</p>
+      <div className="k-grain w-full max-w-md border border-hairline bg-canvas p-8 text-center md:p-12">
+        <p className="k-label"><span className="k-accent">[beta]</span> Private beta</p>
         <h1 className="type-display-md mt-4 text-ink-navy">You&apos;re on the waitlist</h1>
         <p className="type-body mt-3 text-ink-muted">
           {email ? (

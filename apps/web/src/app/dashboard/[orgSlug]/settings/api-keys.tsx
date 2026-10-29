@@ -143,10 +143,10 @@ function TokenItem({
               <h3 className="truncate text-base text-ink">{token.name}</h3>
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 type-mono text-[11px]",
+                  "k-tag",
                   isPublishable
-                    ? "bg-blue-600/10 text-blue-700 dark:text-blue-300"
-                    : "bg-ink/5 text-ink-muted",
+                    ? "k-tag-accent"
+                    : "",
                 )}
               >
                 {isPublishable ? "publishable" : "secret"}
@@ -167,7 +167,7 @@ function TokenItem({
                 {token.scopes.map((scope) => (
                   <span
                     key={scope}
-                    className="rounded-full bg-ink/[0.04] px-2 py-0.5 type-mono text-[11px] dark:bg-polar-800"
+                    className="border border-hairline bg-pillar px-1.5 text-[11px] text-ink-muted"
                   >
                     {scope}
                   </span>
@@ -177,7 +177,7 @@ function TokenItem({
           </div>
         </div>
         <div className="flex shrink-0 flex-row items-center justify-end gap-2">
-          <Button size="sm" onClick={() => onUpdate(token)}>
+          <Button size="sm" variant="outline" onClick={() => onUpdate(token)}>
             Update
           </Button>
           <Button variant="destructive" size="sm" onClick={() => onRevoke(token)}>
