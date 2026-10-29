@@ -77,7 +77,51 @@ input, select, textarea { font: 13px var(--a-font-mono); color: var(--a-fg); bac
 textarea { height: auto; width: 100%; resize: vertical; line-height: 1.6; }
 input::placeholder, textarea::placeholder { color: var(--a-dim); }
 input:focus, select:focus, textarea:focus { border-color: var(--a-accent); }
-input[type="checkbox"] { height: 14px; width: 14px; padding: 0; accent-color: var(--a-accent); }
+/* checkbox: square, orange + check mark when on */
+input[type="checkbox"] { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; padding: 0; margin: 0; flex: 0 0 auto; display: inline-grid; place-content: center; border: 1px solid var(--a-line-strong); border-radius: 2px; background: var(--a-panel); cursor: pointer; transition: background-color .1s, border-color .1s; }
+input[type="checkbox"]::before { content: ""; width: 9px; height: 9px; background: var(--a-accent-fg); clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); transform: scale(0); transition: transform .1s; }
+input[type="checkbox"]:checked { background: var(--a-accent); border-color: var(--a-accent); }
+input[type="checkbox"]:checked::before { transform: scale(1); }
+input[type="checkbox"]:hover { border-color: var(--a-muted); }
+input[type="checkbox"]:focus-visible { outline: 1px solid var(--a-accent); outline-offset: 2px; }
+input[type="number"] { -moz-appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ── select (custom trigger; the native <select> stays in the DOM, visually hidden) ── */
+.sel { position: relative; display: inline-flex; min-width: 0; }
+.row > .sel { flex: 1 1 160px; }
+.sel > select { position: absolute; inset: 0; opacity: 0; pointer-events: none; width: 100%; }
+.sel-btn { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: 36px; padding: 0 10px 0 12px; border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-panel); background-image: var(--a-noise); background-size: 180px; color: var(--a-fg); font: 13px var(--a-font-mono); white-space: nowrap; }
+.sel-btn:hover { border-color: var(--a-muted); }
+.sel-btn[aria-expanded="true"], .sel-btn:focus-visible { border-color: var(--a-accent); outline: none; }
+.sel-label { overflow: hidden; text-overflow: ellipsis; }
+.sel-caret { color: var(--a-dim); font-size: 10px; transition: transform .12s; }
+.sel-btn[aria-expanded="true"] .sel-caret { transform: rotate(180deg); color: var(--a-accent); }
+
+/* ── popover listbox (select + combobox) ── */
+.pop { position: absolute; z-index: 60; min-width: 160px; max-height: 280px; overflow-y: auto; padding: 4px; border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-bg); background-image: var(--a-noise); background-size: 180px; box-shadow: 0 1px 0 var(--a-line), 6px 6px 0 color-mix(in srgb, var(--a-fg) 6%, transparent); font: 12.5px var(--a-font-mono); }
+.pop[hidden] { display: none; }
+.pop .opt { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 8px; border-radius: 2px; color: var(--a-fg); cursor: pointer; white-space: nowrap; }
+.pop .opt::before { content: " "; white-space: pre; width: 1ch; color: var(--a-accent); }
+.pop .opt[aria-selected="true"]::before { content: "›"; }
+.pop .opt.active { background: var(--a-panel); box-shadow: inset 2px 0 0 var(--a-accent); }
+.pop .opt mark { background: none; color: var(--a-accent); }
+.pop .none { padding: 8px 10px; color: var(--a-dim); }
+
+/* ── dialog ── */
+.modal-back { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--a-bg) 72%, transparent); backdrop-filter: blur(2px); animation: kr-fade .12s ease-out; }
+.modal { width: min(440px, 100%); border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-bg); background-image: var(--a-noise); background-size: 180px; box-shadow: 8px 8px 0 color-mix(in srgb, var(--a-fg) 8%, transparent); animation: kr-rise .14s ease-out; }
+.modal > h2 { margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--a-line); font: 400 12px var(--a-font-mono); color: var(--a-muted); background-color: var(--a-panel); background-image: repeating-linear-gradient(-45deg, var(--a-line) 0 1px, transparent 1px 7px); }
+.modal > h2::before { content: "── "; color: var(--a-dim); }
+.modal.danger > h2::before { content: "!! "; color: var(--a-bad); }
+.modal .body { padding: 18px 16px 6px; color: var(--a-fg); }
+.modal .body p { margin: 0 0 12px; color: var(--a-muted); }
+.modal .body label { display: block; margin: 0 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--a-muted); }
+.modal .body input { width: 100%; }
+.modal .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px 16px; }
+@keyframes kr-fade { from { opacity: 0 } }
+@keyframes kr-rise { from { opacity: 0; transform: translateY(6px) } }
+@media (prefers-reduced-motion: reduce) { .modal-back, .modal { animation: none; } }
 select { cursor: pointer; }
 
 /* ── blocks ── */
@@ -332,7 +376,7 @@ async function Subjects(el, selected) {
     $("#saveAttrs").onclick = () => guard(async () => { await K("setSubjectAttrs", { subject: id, attrs: JSON.parse($("#attrs").value || "{}") }); toast("Attributes merged"); });
   };
   $("#q").oninput = () => { clearTimeout(load._t); load._t = setTimeout(() => guard(load), 200); };
-  $("#add").onclick = () => { const id = prompt("Subject id (your user id):"); if (id) detail(id.trim()); };
+  $("#add").onclick = async () => { const id = await ui.prompt({ title: "Grant to new subject", label: "Subject id", placeholder: "user_123 — your app's user id", ok: "Open subject" }); if (id) detail(id.trim()); };
   await load();
   if (selected) detail(selected);
 }
@@ -385,7 +429,7 @@ async function Keys(el) {
       <div class="checks">${scopes.map((s) => `<label><input type="checkbox" value="${s}" ${s === "check" ? "checked" : ""}> ${s}</label>`).join("")}</div>
       <button class="btn" id="mk">Create key</button><div id="newKey" style="margin-top:12px"></div>
     </div>`;
-  el.querySelectorAll("[data-rk]").forEach((b) => (b.onclick = () => guard(async () => { if (!confirm("Revoke this key? Anything using it stops working.")) return; await A("revokeKey", b.dataset.rk); toast("Key revoked"); render(); })));
+  el.querySelectorAll("[data-rk]").forEach((b) => (b.onclick = () => guard(async () => { if (!(await ui.confirm({ title: "Revoke key", body: "Anything using this key stops working immediately. This can't be undone.", ok: "Revoke key", danger: true }))) return; await A("revokeKey", b.dataset.rk); toast("Key revoked"); render(); })));
   $("#mk").onclick = () => guard(async () => {
     const r = await A("issueKey", { name: $("#kn").value.trim() || "key", publishable: $("#kp").checked, scopes: [...el.querySelectorAll(".checks input:checked")].map((i) => i.value) });
     $("#newKey").innerHTML = `<div class="muted" style="margin-bottom:4px">Shown once — copy it now.</div><div class="secret">${esc(r.key)}</div>`;
@@ -397,6 +441,182 @@ $("#theme").onclick = () => {
   try { localStorage.setItem("kr.theme", theme); } catch {}
   applyTheme();
 };
+
+
+// ── UI components (shadcn-style, ASCII look) ─────────────────────────────
+// Native <select>s and <input list=…> are upgraded automatically as views
+// render; the native elements stay in the DOM so existing code reading
+// `.value` / listening for `change` keeps working.
+const ui = (() => {
+  const pop = document.createElement("div");
+  pop.className = "pop"; pop.hidden = true; pop.setAttribute("role", "listbox");
+  document.body.appendChild(pop);
+  let owner = null; // { anchor, items: [{value,label}], selected, onPick, onClose }
+  let active = -1;
+
+  function place(anchor) {
+    const r = anchor.getBoundingClientRect();
+    pop.style.minWidth = `${r.width}px`;
+    pop.style.left = `${r.left + scrollX}px`;
+    const below = innerHeight - r.bottom;
+    pop.style.top = below < 220 && r.top > below ? `${r.top + scrollY - Math.min(pop.offsetHeight, 280) - 4}px` : `${r.bottom + scrollY + 4}px`;
+  }
+  function paint(highlight) {
+    pop.innerHTML = owner.items.length
+      ? owner.items.map((it, i) => `<div class="opt${i === active ? " active" : ""}" role="option" data-i="${i}" aria-selected="${it.value === owner.selected}">${highlight ? highlight(it.label) : esc(it.label)}</div>`).join("")
+      : `<div class="none">no matches</div>`;
+    pop.querySelector(".opt.active")?.scrollIntoView({ block: "nearest" });
+  }
+  function open(o) {
+    close();
+    owner = o;
+    active = Math.max(0, o.items.findIndex((it) => it.value === o.selected));
+    pop.hidden = false;
+    paint(o.highlight);
+    place(o.anchor);
+  }
+  function close() {
+    if (!owner) return;
+    const o = owner; owner = null; pop.hidden = true; o.onClose?.();
+  }
+  function move(d) {
+    if (!owner || !owner.items.length) return;
+    active = (active + d + owner.items.length) % owner.items.length;
+    paint(owner.highlight);
+  }
+  function pick(i) {
+    const o = owner; if (!o || !o.items[i]) return;
+    close(); o.onPick(o.items[i]);
+  }
+  pop.addEventListener("mousedown", (e) => e.preventDefault()); // keep focus on the trigger/input
+  pop.addEventListener("click", (e) => { const el = e.target.closest(".opt"); if (el) pick(Number(el.dataset.i)); });
+  document.addEventListener("mousedown", (e) => { if (owner && !pop.contains(e.target) && !owner.anchor.contains(e.target)) close(); });
+  addEventListener("resize", () => owner && place(owner.anchor));
+  addEventListener("scroll", () => owner && place(owner.anchor), true);
+
+  // <select> → trigger button + listbox
+  function enhanceSelect(sel) {
+    sel.dataset.enhanced = "1";
+    const wrap = document.createElement("span");
+    wrap.className = "sel";
+    sel.replaceWith(wrap);
+    wrap.appendChild(sel);
+    sel.tabIndex = -1;
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "sel-btn";
+    btn.setAttribute("aria-haspopup", "listbox"); btn.setAttribute("aria-expanded", "false");
+    if (sel.title) btn.title = sel.title;
+    btn.innerHTML = `<span class="sel-label"></span><span class="sel-caret">▼</span>`;
+    wrap.appendChild(btn);
+    const items = () => [...sel.options].map((o) => ({ value: o.value, label: o.textContent }));
+    // Only write when the text actually changes: writing is itself a DOM
+    // mutation, and the observer below would otherwise re-trigger forever.
+    const label = btn.querySelector(".sel-label");
+    const sync = () => { const t = sel.selectedOptions[0]?.textContent ?? ""; if (label.textContent !== t) label.textContent = t; };
+    sel._sync = sync; sync();
+    sel.addEventListener("change", sync);
+    const show = () => {
+      btn.setAttribute("aria-expanded", "true");
+      open({ anchor: btn, items: items(), selected: sel.value,
+        onPick: (it) => { if (sel.value !== it.value) { sel.value = it.value; sel.dispatchEvent(new Event("change", { bubbles: true })); } btn.focus(); },
+        onClose: () => btn.setAttribute("aria-expanded", "false") });
+    };
+    btn.addEventListener("click", () => (owner?.anchor === btn ? close() : show()));
+    btn.addEventListener("keydown", (e) => {
+      const isOpen = owner?.anchor === btn;
+      if (["ArrowDown", "ArrowUp", "Enter", " "].includes(e.key)) {
+        e.preventDefault();
+        if (!isOpen) return show();
+        if (e.key === "ArrowDown") move(1); else if (e.key === "ArrowUp") move(-1); else pick(active);
+      } else if (e.key === "Escape" && isOpen) { e.preventDefault(); close(); }
+      else if (isOpen && e.key.length === 1) { // type to jump
+        const i = owner.items.findIndex((it) => it.label.toLowerCase().startsWith(e.key.toLowerCase()));
+        if (i >= 0) { active = i; paint(); }
+      }
+    });
+  }
+
+  // <input list="…"> → filtered combobox
+  function enhanceCombo(input) {
+    input.dataset.enhanced = "1";
+    const list = document.getElementById(input.getAttribute("list"));
+    const values = list ? [...list.options].map((o) => o.value) : [];
+    input.removeAttribute("list");
+    input.setAttribute("autocomplete", "off");
+    input.setAttribute("role", "combobox");
+    const show = () => {
+      const q = input.value.trim().toLowerCase();
+      const items = values.filter((v) => v.toLowerCase().includes(q)).slice(0, 50).map((v) => ({ value: v, label: v }));
+      const highlight = q ? (label) => esc(label).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), (m) => `<mark>${m}</mark>`) : null;
+      open({ anchor: input, items, selected: input.value, highlight,
+        onPick: (it) => { input.value = it.value; input.dispatchEvent(new Event("input", { bubbles: true })); } });
+      if (!q) { active = -1; paint(); }
+    };
+    input.addEventListener("focus", show);
+    input.addEventListener("input", show);
+    input.addEventListener("keydown", (e) => {
+      if (owner?.anchor !== input) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); move(1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+      else if (e.key === "Enter" && active >= 0) { e.preventDefault(); pick(active); }
+      else if (e.key === "Escape") { e.preventDefault(); close(); }
+    });
+    input.addEventListener("blur", () => setTimeout(() => owner?.anchor === input && close(), 100));
+  }
+
+  // modal dialog; resolves with the chosen value (null on Esc / backdrop)
+  function dialog({ title, body = "", input, actions, danger = false }) {
+    return new Promise((resolve) => {
+      const prevFocus = document.activeElement;
+      const back = document.createElement("div");
+      back.className = "modal-back";
+      back.innerHTML = `<div class="modal${danger ? " danger" : ""}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+        <h2>${esc(title)}</h2>
+        <div class="body">${body ? `<p>${esc(body)}</p>` : ""}${input ? `<label for="dlg-in">${esc(input.label)}</label><input id="dlg-in" placeholder="${esc(input.placeholder || "")}" autocomplete="off">` : ""}</div>
+        <div class="actions">${actions.map((a, i) => `<button type="button" class="btn ${a.kind || ""} sm" data-i="${i}">${esc(a.label)}</button>`).join("")}</div>
+      </div>`;
+      const done = (v) => { document.removeEventListener("keydown", onKey, true); back.remove(); prevFocus?.focus?.(); resolve(v); };
+      const field = back.querySelector("#dlg-in");
+      const valueOf = (a) => (a.value === "input" ? (field.value.trim() || null) : a.value);
+      const onKey = (e) => {
+        if (e.key === "Escape") { e.preventDefault(); done(null); }
+        else if (e.key === "Enter" && field && document.activeElement === field) { e.preventDefault(); const a = actions.find((x) => x.primary); if (a) done(valueOf(a)); }
+        else if (e.key === "Tab") { // keep focus inside
+          const f = [...back.querySelectorAll("input, button")];
+          const i = f.indexOf(document.activeElement);
+          if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+          else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+        }
+      };
+      document.addEventListener("keydown", onKey, true);
+      back.addEventListener("mousedown", (e) => { if (e.target === back) done(null); });
+      back.querySelectorAll(".actions button").forEach((b) => (b.onclick = () => done(valueOf(actions[Number(b.dataset.i)]))));
+      document.body.appendChild(back);
+      (field || back.querySelector(`.actions button[data-i="${actions.findIndex((a) => a.primary)}"]`) || back.querySelector(".actions button")).focus();
+    });
+  }
+  const confirm = ({ title, body, ok = "Confirm", danger = false }) =>
+    dialog({ title, body, danger, actions: [{ label: "Cancel", kind: "ghost", value: false }, { label: ok, kind: danger ? "danger" : "", value: true, primary: true }] }).then((v) => v === true);
+  const prompt = ({ title, body, label, placeholder, ok = "Continue" }) =>
+    dialog({ title, body, input: { label, placeholder }, actions: [{ label: "Cancel", kind: "ghost", value: null }, { label: ok, value: "input", primary: true }] });
+
+  // auto-upgrade anything new, keep select labels in sync with option changes
+  const scan = () => {
+    document.querySelectorAll("select:not([data-enhanced])").forEach(enhanceSelect);
+    document.querySelectorAll("input[list]:not([data-enhanced])").forEach(enhanceCombo);
+    document.querySelectorAll("select[data-enhanced]").forEach((s) => s._sync?.());
+  };
+  // Ignore mutations that only touch our own widgets (labels, popover, dialogs).
+  const ours = (n) => n.nodeType === 1 ? n.closest?.(".sel-btn, .pop, .modal-back") : n.parentElement?.closest(".sel-btn, .pop, .modal-back");
+  let queued = false;
+  new MutationObserver((records) => {
+    if (queued || records.every((r) => ours(r.target))) return;
+    queued = true;
+    queueMicrotask(() => { queued = false; scan(); });
+  }).observe(document.body, { childList: true, subtree: true });
+  scan();
+  return { confirm, prompt, dialog, close };
+})();
 
 boot().catch((e) => { $("#view").innerHTML = `<div class="panel"><h2>Can't reach Keyring</h2><p>${esc(e.message)}</p></div>`; });
 </script>
