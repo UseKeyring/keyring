@@ -54,7 +54,7 @@ nav .foot { margin-top: auto; padding: 14px 18px; font-size: 11.5px; color: var(
 main { padding: 0 0 64px; min-width: 0; }
 header.top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 32px; min-height: 56px; border-bottom: 1px solid var(--a-line); position: sticky; top: 0; z-index: 5; background-color: var(--a-bg); background-image: var(--a-noise); background-size: 180px; }
 header.top h1 { margin: 0; font: 300 15px var(--a-font-mono); color: var(--a-muted); letter-spacing: 0; }
-header.top h1::before { content: "keyring / studio / "; color: var(--a-dim); }
+header.top h1::before { content: "keyring / " attr(data-ws) " / "; color: var(--a-dim); }
 #view { padding: 32px; max-width: 1180px; }
 #view::before { content: attr(data-title); display: block; font: 300 clamp(30px, 3.6vw, 44px)/1.05 var(--a-font-display); letter-spacing: -0.03em; color: var(--a-fg); margin: 0 0 26px; }
 .grow { flex: 1; }
@@ -64,6 +64,7 @@ header.top h1::before { content: "keyring / studio / "; color: var(--a-dim); }
 .pill.ok { color: var(--a-ok); border-color: color-mix(in srgb, var(--a-ok) 45%, transparent); }
 .pill.bad { color: var(--a-bad); border-color: color-mix(in srgb, var(--a-bad) 45%, transparent); }
 .pill.dark { color: var(--a-accent); border-color: var(--a-accent); }
+.pill .live { width: 6px; height: 6px; border-radius: 50%; background: var(--a-ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--a-ok) 18%, transparent); }
 .btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px; border: 1px solid var(--a-accent); border-radius: 2px; background-color: var(--a-accent); background-image: var(--a-noise); background-size: 180px; color: var(--a-accent-fg); font: 12.5px var(--a-font-mono); white-space: nowrap; transition: background-color .12s, border-color .12s, color .12s; }
 .btn:hover { background-color: var(--a-accent-hover); border-color: var(--a-accent-hover); }
 .btn.ghost { background-color: transparent; border-color: var(--a-line-strong); color: var(--a-fg); }
@@ -99,14 +100,15 @@ input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-o
 .sel-btn[aria-expanded="true"] .sel-caret { transform: rotate(180deg); color: var(--a-accent); }
 
 /* ── popover listbox (select + combobox) ── */
-.pop { position: absolute; z-index: 60; min-width: 160px; max-height: 280px; overflow-y: auto; padding: 4px; border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-bg); background-image: var(--a-noise); background-size: 180px; box-shadow: 0 1px 0 var(--a-line), 6px 6px 0 color-mix(in srgb, var(--a-fg) 6%, transparent); font: 12.5px var(--a-font-mono); }
+.pop { position: absolute; z-index: 60; min-width: 160px; max-height: 280px; overflow-y: auto; padding: 4px; border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-bg); background-image: var(--a-noise); background-size: 180px; font: 13px var(--a-font-mono); }
 .pop[hidden] { display: none; }
-.pop .opt { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 8px; border-radius: 2px; color: var(--a-fg); cursor: pointer; white-space: nowrap; }
-.pop .opt::before { content: " "; white-space: pre; width: 1ch; color: var(--a-accent); }
-.pop .opt[aria-selected="true"]::before { content: "›"; }
-.pop .opt.active { background: var(--a-panel); box-shadow: inset 2px 0 0 var(--a-accent); }
+.pop .opt { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 30px; padding: 0 8px 0 10px; border-radius: 2px; color: var(--a-fg); cursor: pointer; white-space: nowrap; }
+.pop .opt::after { content: ""; width: 12px; height: 12px; flex: 0 0 auto; }
+.pop .opt[aria-selected="true"]::after { background: var(--a-accent); clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); transform: scale(.8); }
+.pop .opt.active { background: var(--a-raised); }
+.pop .opt-label { overflow: hidden; text-overflow: ellipsis; }
 .pop .opt mark { background: none; color: var(--a-accent); }
-.pop .none { padding: 8px 10px; color: var(--a-dim); }
+.pop .none { padding: 7px 10px; color: var(--a-dim); }
 
 /* ── dialog ── */
 .modal-back { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--a-bg) 72%, transparent); backdrop-filter: blur(2px); animation: kr-fade .12s ease-out; }
@@ -239,8 +241,10 @@ function go(v) { state.view = v; location.hash = v; clearInterval(state.timer); 
 
 async function boot() {
   state.info = await call("studio", "info");
-  $("#mode").textContent = `${state.info.mode} · ${state.info.workspace.slug}`;
-  $("#mode").className = `pill ${state.info.mode === "local" ? "dark" : ""}`;
+  $("#mode").innerHTML = `<span class="live" aria-hidden="true"></span>${esc(state.info.mode)}`;
+  $("#mode").title = state.info.target;
+  $("#title").dataset.ws = state.info.workspace.slug;
+  $("#mode").className = "pill";
   $("#foot").innerHTML = `${esc(state.info.target)}<br><br><a href="/llms.txt">llms.txt</a> · API <span class="mono">${esc(location.origin)}/api/v1</span>`;
   await loadSpaces();
   $("#space").onchange = (e) => { state.space = e.target.value; render(); };
@@ -463,7 +467,7 @@ const ui = (() => {
   }
   function paint(highlight) {
     pop.innerHTML = owner.items.length
-      ? owner.items.map((it, i) => `<div class="opt${i === active ? " active" : ""}" role="option" data-i="${i}" aria-selected="${it.value === owner.selected}">${highlight ? highlight(it.label) : esc(it.label)}</div>`).join("")
+      ? owner.items.map((it, i) => `<div class="opt${i === active ? " active" : ""}" role="option" data-i="${i}" aria-selected="${it.value === owner.selected}"><span class="opt-label">${highlight ? highlight(it.label) : esc(it.label)}</span></div>`).join("")
       : `<div class="none">no matches</div>`;
     pop.querySelector(".opt.active")?.scrollIntoView({ block: "nearest" });
   }
