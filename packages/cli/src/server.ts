@@ -29,7 +29,7 @@ const KEYRING_METHODS = new Set<keyof Api>([
   "deleteSpace", "createSubjectToken", "whoami",
 ]);
 const ADMIN_METHODS = new Set<string>([
-  "org", "overview", "roleDetails", "listSubjects", "subject", "events", "listKeys", "issueKey", "revokeKey",
+  "org", "overview", "roleDetails", "listSubjects", "subject", "events", "telemetry", "listKeys", "issueKey", "revokeKey",
   "setDefaultRole", "deleteRole", "deleteAction", "unlinkAction",
 ]);
 

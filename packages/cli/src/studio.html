@@ -191,6 +191,37 @@ pre.code { background-color: var(--a-panel); background-image: var(--a-noise); b
   .split { grid-template-columns: 1fr; }
   table { display: block; overflow-x: auto; }
 }
+
+/* ── block-matrix charts ── */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart .cell-empty { fill: var(--a-raised); }
+.chart .guide { position: absolute; top: 0; bottom: 22px; width: 0; border-left: 1px dashed var(--a-muted); pointer-events: none; }
+.chart .dot { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 1.5px solid var(--a-fg); background: var(--a-bg); pointer-events: none; }
+.chart .tip { position: absolute; z-index: 5; min-width: 168px; padding: 0 0 6px; border: 1px solid var(--a-line-strong); border-radius: 2px; background-color: var(--a-bg); background-image: var(--a-noise); background-size: 180px; pointer-events: none; font: 12.5px var(--a-font-mono); }
+.chart .tip .t { margin: 6px; padding: 6px 10px; border: 1px solid var(--a-line); border-radius: 2px; color: var(--a-muted); font: 14px var(--a-font-display); background: var(--a-panel); }
+.chart .tip .s { display: flex; align-items: baseline; gap: 8px; padding: 4px 14px; color: var(--a-muted); }
+.chart .tip .s b { margin-left: auto; padding-left: 14px; font: 400 16px var(--a-font-display); color: var(--a-fg); }
+.chart .tip i, .legend i { display: inline-block; width: 7px; height: 7px; border-radius: 1px; }
+.chart .axis { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--a-dim); }
+.legend { display: flex; gap: 6px; margin-left: auto; }
+.legend button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; padding: 3px 8px; border: 1px solid var(--a-line); border-radius: 2px; font-size: 11.5px; color: var(--a-muted); }
+.legend button:hover { color: var(--a-fg); border-color: var(--a-line-strong); }
+.legend button.off { opacity: .4; }
+.panel > h2.with-legend { display: flex; align-items: center; gap: 10px; padding-top: 6px; padding-bottom: 6px; }
+.hbars { display: flex; flex-direction: column; gap: 9px; }
+.hbar { display: grid; grid-template-columns: minmax(0, 150px) 1fr auto; align-items: center; gap: 12px; font-size: 12.5px; }
+.hbar .k { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--a-fg); }
+.hbar .v { color: var(--a-muted); min-width: 3ch; text-align: right; }
+.hbar svg { display: block; width: 100%; height: 10px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.toolbar .sel { flex: 0 0 auto; min-width: 150px; }
+.summary { margin: -12px 0 22px; font-size: 12px; color: var(--a-muted); }
+.summary b { font-weight: 400; color: var(--a-fg); }
+.cards.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 760px) { .cards.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } .hbar { grid-template-columns: minmax(0, 110px) 1fr auto; } }
 </style>
 </head>
 <body class="ascii">
@@ -228,7 +259,7 @@ function applyTheme() {
   if (b) b.innerHTML = theme === "dark" ? SUN : MOON;
 }
 applyTheme();
-const VIEWS = ["Overview", "Policy", "Roles", "Actions", "Subjects", "Playground", "Events", "Keys"];
+const VIEWS = ["Overview", "Policy", "Roles", "Actions", "Subjects", "Playground", "Events", "Telemetry", "Keys"];
 const state = { view: location.hash.slice(1) || "Overview", space: "", info: null, timer: null };
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -258,12 +289,13 @@ const ICON = {
   Subjects: '<circle cx="9" cy="8.5" r="3.5"/><path d="M3 19.5c.6-3.2 3.1-5 6-5s5.4 1.8 6 5"/><path d="M15.5 5.2a3.5 3.5 0 0 1 0 6.6M17.5 14.8c1.8.6 3 2.2 3.5 4.7"/>',
   Playground: '<path d="M9.5 3.5h5M10 3.5v5.2L4.8 18a1.7 1.7 0 0 0 1.5 2.5h11.4a1.7 1.7 0 0 0 1.5-2.5L14 8.7V3.5"/><path d="M7.2 14h9.6"/>',
   Events: '<path d="M3.5 12h4l2.5-6.5 4 13 2.5-6.5h4"/>',
+  Telemetry: '<path d="M4 20.5h16"/><rect x="5" y="12" width="3" height="6" rx=".5"/><rect x="10.5" y="7" width="3" height="11" rx=".5"/><rect x="16" y="4" width="3" height="14" rx=".5"/>',
   Keys: '<circle cx="8" cy="15.5" r="4.5"/><path d="m11.2 12.3 8.3-8.3M16.5 7l2.5 2.5M14 9.5l2 2"/>',
 };
 const GROUPS = [
   ["Workspace", ["Overview", "Policy"]],
   ["Access model", ["Roles", "Actions", "Subjects"]],
-  ["Debug", ["Playground", "Events"]],
+  ["Debug", ["Playground", "Events", "Telemetry"]],
   ["Settings", ["Keys"]],
 ];
 function nav() {
@@ -305,17 +337,18 @@ async function render() {
   const view = $("#view");
   view.dataset.title = state.view;
   view.innerHTML = '<div class="muted">Loading…</div>';
-  try { await ({ Overview, Policy, Roles, Actions, Subjects, Playground, Events, Keys }[state.view] || Overview)(view); }
+  try { await ({ Overview, Policy, Roles, Actions, Subjects, Playground, Events, Telemetry, Keys }[state.view] || Overview)(view); }
   catch (e) { view.innerHTML = `<div class="panel"><h2>Something broke</h2><p class="ink">${esc(e.message)}</p>${e.hint ? `<p class="muted">${esc(e.hint)}</p>` : ""}</div>`; }
 }
 
 // ── views ──────────────────────────────────────────────────────────────
 async function Overview(el) {
-  const [o, events] = await Promise.all([A("overview"), A("events", { limit: 8 })]);
+  const [o, events, tel] = await Promise.all([A("overview"), A("events", { limit: 8 }), A("telemetry", { days: 30, space: state.space || null })]);
   const c = o.counts;
   const stat = (n, l) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;
   el.innerHTML = `
     <div class="cards">${stat(c.roles, "Roles")}${stat(c.actions, "Actions")}${stat(c.subjects, "Subjects")}${stat(c.grants, "Active grants")}${stat(c.spaces, "Spaces")}${stat(c.checks_24h, "Checks 24h")}${stat(c.denied_24h, "Denied 24h")}</div>
+    <div class="panel"><h2 class="with-legend" id="ov-h">Checks · last 30 days</h2><div id="ov-chart"></div></div>
     <div class="split">
       <div class="panel"><h2>Use it from your app</h2>
         <div class="muted">Point the SDK at this ${esc(state.info.mode)} instance — same API as hosted.</div>
@@ -330,6 +363,7 @@ await keyring.check("user_123", "projects.read");</pre>
       </div>
       <div class="panel"><h2>Recent checks</h2>${eventsTable(events)}</div>
     </div>`;
+  { const ts = timeSeries(tel, 30); const ch = blockChart({ buckets: ts.buckets, series: SERIES(), rows: 10, axis: ts.axis }); $("#ov-chart").appendChild(ch); $("#ov-h").appendChild(ch.legend()); }
 }
 
 function eventsTable(rows) {
@@ -464,6 +498,178 @@ async function Events(el) {
   $("#es").oninput = $("#ed").onchange = () => guard(load);
   await load();
   state.timer = setInterval(() => { if (!document.hidden) load().catch(() => {}); }, 2000);
+}
+
+
+// ── block-matrix charts ─────────────────────────────────────────────────
+// Square cells in columns; series stack bottom-up; empty cells fill the grid.
+const CELL = 10, GAP = 3, PITCH = CELL + GAP;
+const fmtN = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1).replace(/\.0$/, "")}m` : n >= 1e4 ? `${Math.round(n / 1e3)}k` : n >= 1e3 ? `${(n / 1e3).toFixed(1).replace(/\.0$/, "")}k` : String(n));
+
+function blockChart({ buckets, series, rows = 14, axis = [] }) {
+  // buckets: [{ label, values: { [seriesKey]: number } }]; series: [{ key, label, color }]
+  const wrap = document.createElement("div");
+  wrap.className = "chart";
+  const hidden = new Set();
+  const cols = buckets.length;
+  const W = cols * PITCH - GAP, H = rows * PITCH - GAP;
+  const draw = () => {
+    const vis = series.filter((x) => !hidden.has(x.key));
+    const totals = buckets.map((b) => vis.reduce((n, x) => n + (b.values[x.key] || 0), 0));
+    const max = Math.max(1, ...totals);
+    let rects = "";
+    const tops = [];
+    buckets.forEach((b, c) => {
+      const t = totals[c];
+      const filled = t === 0 ? 0 : Math.max(1, Math.round((t / max) * rows));
+      // split the filled height between series in proportion, bottom-up, every non-zero series gets ≥1 cell
+      let left = filled, row = 0;
+      const shares = vis.map((x) => ({ x, v: b.values[x.key] || 0 }));
+      shares.forEach((sh, i) => {
+        if (!sh.v || left <= 0) return;
+        const rest = shares.slice(i + 1).filter((o) => o.v).length;
+        let n = i === shares.length - 1 ? left : Math.max(1, Math.round((sh.v / t) * filled));
+        n = Math.min(n, left - rest > 0 ? left - rest : left);
+        for (let k = 0; k < n; k++, row++) rects += `<rect x="${c * PITCH}" y="${H - CELL - row * PITCH}" width="${CELL}" height="${CELL}" rx="1.5" fill="${sh.x.color}"/>`;
+        left -= n;
+      });
+      tops.push(row);
+      for (; row < rows; row++) rects += `<rect class="cell-empty" x="${c * PITCH}" y="${H - CELL - row * PITCH}" width="${CELL}" height="${CELL}" rx="1.5"/>`;
+    });
+    wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map((x) => x.label).join(" and "))} per period">${rects}</svg>
+      <div class="axis">${axis.map((a) => `<span>${esc(a)}</span>`).join("")}</div>`;
+    const svg = wrap.querySelector("svg");
+    let guide, dot, tip;
+    const hide = () => { guide?.remove(); dot?.remove(); tip?.remove(); guide = dot = tip = null; };
+    svg.addEventListener("mouseleave", hide);
+    svg.addEventListener("mousemove", (e) => {
+      const r = svg.getBoundingClientRect();
+      const scale = r.width / W;
+      const c = Math.min(cols - 1, Math.max(0, Math.floor((e.clientX - r.left) / scale / PITCH)));
+      const x = (c * PITCH + CELL / 2) * scale;
+      const y = (H - Math.max(tops[c], 1) * PITCH + GAP) * scale;
+      if (!guide) {
+        guide = Object.assign(document.createElement("div"), { className: "guide" });
+        dot = Object.assign(document.createElement("div"), { className: "dot" });
+        tip = Object.assign(document.createElement("div"), { className: "tip" });
+        wrap.append(guide, dot, tip);
+      }
+      guide.style.left = `${x}px`;
+      dot.style.left = `${x}px`; dot.style.top = `${y}px`;
+      const b = buckets[c];
+      tip.innerHTML = `<div class="t">${esc(b.label)}</div>` + [...series].reverse().map((x) =>
+        `<div class="s"${hidden.has(x.key) ? ' style="opacity:.4"' : ""}><i style="background:${x.color}"></i>${esc(x.label)}<b>${fmtN(b.values[x.key] || 0)}</b></div>`).join("");
+      const tw = tip.offsetWidth;
+      tip.style.left = `${x + 14 + tw > r.width ? x - 14 - tw : x + 14}px`;
+      tip.style.top = `${Math.max(0, Math.min(y - 20, r.height - tip.offsetHeight - 24))}px`;
+    });
+  };
+  draw();
+  wrap.legend = () => {
+    const lg = document.createElement("div");
+    lg.className = "legend";
+    lg.innerHTML = series.map((x) => `<button type="button" data-k="${x.key}"><i style="background:${x.color}"></i>${esc(x.label)}</button>`).join("");
+    lg.querySelectorAll("button").forEach((btn) => (btn.onclick = () => {
+      const k = btn.dataset.k;
+      if (hidden.has(k)) hidden.delete(k); else if (hidden.size < series.length - 1) hidden.add(k);
+      lg.querySelectorAll("button").forEach((o) => o.classList.toggle("off", hidden.has(o.dataset.k)));
+      draw();
+    }));
+    return lg;
+  };
+  return wrap;
+}
+
+// Horizontal block bars for "top N" lists.
+function blockBars(entries, { cells = 32, color = "var(--a-accent)" } = {}) {
+  if (!entries.length) return '<div class="empty">No data in this range.</div>';
+  const max = entries[0][1];
+  const W = cells * PITCH - GAP;
+  return `<div class="hbars">${entries.map(([k, n]) => {
+    const on = Math.max(1, Math.round((n / max) * cells));
+    let r = "";
+    for (let i = 0; i < cells; i++) r += `<rect x="${i * PITCH}" y="0" width="${CELL}" height="${CELL}" rx="1.5" ${i < on ? `fill="${color}"` : 'class="cell-empty"'}/>`;
+    return `<div class="hbar"><span class="k" title="${esc(k)}">${esc(k)}</span><svg class="chart" viewBox="0 0 ${W} ${CELL}" preserveAspectRatio="xMinYMid meet">${r}</svg><span class="v">${fmtN(n)}</span></div>`;
+  }).join("")}</div>`;
+}
+
+const SERIES = () => [
+  { key: "allowed", label: "Allowed", color: "var(--a-accent)" },
+  { key: "denied", label: "Denied", color: "var(--a-dim)" },
+];
+
+// Bucket raw events into a time series (local time). Fine buckets keep the
+// cells small and the matrix dense: 7d → 3h, 30d → 12h, 90d → 1d.
+function timeSeries(rows, days) {
+  const step = days <= 7 ? 3 * 3600e3 : days <= 30 ? 12 * 3600e3 : 86400e3;
+  const now = new Date();
+  const end = new Date(now); end.setMinutes(0, 0, 0);
+  // align bucket boundaries to the clock: 00/03/06… for 3h, 00/12 for 12h, midnight for days
+  const stepH = step / 3600e3;
+  end.setHours(stepH >= 24 ? 0 : Math.floor(end.getHours() / stepH) * stepH);
+  const startMs = end.getTime() - (Math.ceil((days * 86400e3) / step) - 1) * step;
+  const n = Math.round((end.getTime() - startMs) / step) + 1;
+  const buckets = Array.from({ length: n }, (_, i) => {
+    const d = new Date(startMs + i * step);
+    const label = step < 86400e3
+      ? `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${String(d.getHours()).padStart(2, "0")}:00`
+      : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    return { label, values: { allowed: 0, denied: 0 } };
+  });
+  for (const e of rows) {
+    const i = Math.floor((new Date(e.created_at).getTime() - startMs) / step);
+    if (i >= 0 && i < n) buckets[i].values[e.allowed ? "allowed" : "denied"]++;
+  }
+  const short = (i) => new Date(startMs + i * step).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return { buckets, axis: [short(0), short(Math.floor(n / 2)), "now"] };
+}
+
+function topN(rows, pick, n = 6) {
+  const m = new Map();
+  for (const e of rows) for (const k of [].concat(pick(e) || [])) m.set(k, (m.get(k) || 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
+}
+
+async function Telemetry(el) {
+  const f = (state.tf ||= { days: "30", action: "", result: "all" });
+  const [rows, actions] = await Promise.all([
+    A("telemetry", { days: Number(f.days), action: f.action || null, result: f.result, space: state.space || null }),
+    K("listPermissions", sp()),
+  ]);
+  const allowed = rows.filter((e) => e.allowed).length;
+  const subjects = new Set(rows.map((e) => e.subject)).size;
+  const hours = Array.from({ length: 24 }, (_, h) => ({ label: `${String(h).padStart(2, "0")}:00 local`, values: { checks: 0 } }));
+  for (const e of rows) hours[new Date(e.created_at).getHours()].values.checks++;
+  const peak = rows.length ? hours.reduce((b, x, i, a) => (x.values.checks > a[b].values.checks ? i : b), 0) : null;
+  const topActions = topN(rows, (e) => e.action);
+  const topRoles = topN(rows, (e) => (e.allowed ? e.via : []));
+  const topSubjects = topN(rows, (e) => e.subject);
+  const stat = (n, l) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  const opt = (v, l, cur) => `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(l)}</option>`;
+  el.innerHTML = `
+    <div class="toolbar">
+      <select id="tf-days">${opt("7", "Last 7 days", f.days)}${opt("30", "Last 30 days", f.days)}${opt("90", "Last 90 days", f.days)}</select>
+      <select id="tf-action">${opt("", "All actions", f.action)}${actions.map((a) => opt(a.slug, a.slug, f.action)).join("")}</select>
+      <select id="tf-result">${opt("all", "All results", f.result)}${opt("allowed", "Allowed", f.result)}${opt("denied", "Denied", f.result)}</select>
+    </div>
+    <div class="cards c4">${stat(fmtN(rows.length), "Checks")}${stat(rows.length ? `${Math.round((allowed / rows.length) * 100)}%` : "—", "Allow rate")}${stat(fmtN(subjects), "Active subjects")}${stat(fmtN(rows.length - allowed), "Denied")}</div>
+    ${rows.length ? `<p class="summary">top action <b>${esc(topActions[0]?.[0] ?? "—")}</b> · top role <b>${esc(topRoles[0]?.[0] ?? "none yet")}</b> · peak hour <b>${peak === null ? "—" : `${String(peak).padStart(2, "0")}:00`}</b></p>` : ""}
+    <div class="panel"><h2 class="with-legend" id="ts-h">Checks over time</h2><div id="ts"></div></div>
+    <div class="grid2">
+      <div class="panel"><h2>Most active hours (local)</h2><div id="hrs"></div></div>
+      <div class="panel"><h2>Top actions</h2>${blockBars(topActions)}</div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h2>Top granting roles</h2>${blockBars(topRoles)}</div>
+      <div class="panel"><h2>Top subjects</h2>${blockBars(topSubjects, { color: "var(--a-fg)" })}</div>
+    </div>`;
+  const ts = timeSeries(rows, Number(f.days));
+  const chart = blockChart({ buckets: ts.buckets, series: SERIES(), rows: 18, axis: ts.axis });
+  $("#ts").appendChild(chart);
+  $("#ts-h").appendChild(chart.legend());
+  $("#hrs").appendChild(blockChart({ buckets: hours, series: [{ key: "checks", label: "Checks", color: "var(--a-accent)" }], rows: 9, axis: ["00:00", "12:00", "23:00"] }));
+  const bind = (id, key) => ($(id).onchange = (e) => { f[key] = e.target.value; render(); });
+  bind("#tf-days", "days"); bind("#tf-action", "action"); bind("#tf-result", "result");
 }
 
 async function Keys(el) {

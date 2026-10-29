@@ -148,6 +148,24 @@ export class Admin {
     return rows;
   }
 
+  /** Raw decisions over a window for Studio's telemetry charts (bucketed client-side, in local time). */
+  async telemetry(opts: { days?: number; action?: string | null; result?: "all" | "allowed" | "denied"; space?: string | null } = {}) {
+    const org = await this.org();
+    const days = Math.min(Math.max(Math.floor(opts.days ?? 30), 1), 90);
+    const sid = await this.spaceId(opts.space);
+    const allowed = opts.result === "allowed" ? true : opts.result === "denied" ? false : null;
+    const { rows } = await this.db.query(
+      `SELECT e.created_at, e.allowed, e.permission_slug AS action, e.subject_external_id AS subject, e.matched_role_slugs AS via
+       FROM keyring.check_events e
+       WHERE e.organization_id = $1 AND e.created_at > now() - make_interval(days => $2::int)
+         AND ($3::text IS NULL OR e.permission_slug = $3) AND ($4::boolean IS NULL OR e.allowed = $4)
+         AND e.space_id IS NOT DISTINCT FROM $5::uuid
+       ORDER BY e.created_at LIMIT 20000`,
+      [org.id, days, opts.action || null, allowed, sid],
+    );
+    return rows;
+  }
+
   async listKeys() {
     const org = await this.org();
     const { rows } = await this.db.query(
