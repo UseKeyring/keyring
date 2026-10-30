@@ -21,7 +21,7 @@ export const metadata: Metadata = {
       "Define actions, compose them into roles, and grant them to your product's users.",
     images: [
       {
-        url: `${siteUrl}/opengraph.png?v=3`,
+        url: `${siteUrl}/opengraph.png?v=4`,
         width: 1200,
         height: 630,
         alt: "Keyring — Access-control infrastructure for your product",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     title: "Keyring — Access control infrastructure for your product",
     description:
       "Define actions, compose them into roles, and grant them to your product's users.",
-    images: [`${siteUrl}/opengraph.png?v=3`],
+    images: [`${siteUrl}/opengraph.png?v=4`],
   },
 };
 
